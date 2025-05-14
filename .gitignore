@@ -64,3 +64,7 @@ tags
 /cmake
 /cscope
 abc.history
+
+benchmark/
+beemaigs.7z
+benchmark_results.txt
