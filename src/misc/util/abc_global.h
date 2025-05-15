@@ -252,10 +252,10 @@ typedef ABC_INT64_T iword;
 
 #define ABC_SWAP(Type, a, b)  { Type t = a; a = b; b = t; }
 
-#define ABC_PRT(a,t)    (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%9.6f sec\n", 1.0*((double)(t))/((double)CLOCKS_PER_SEC)))
-#define ABC_PRTr(a,t)   (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%9.6f sec\r", 1.0*((double)(t))/((double)CLOCKS_PER_SEC)))
-#define ABC_PRTn(a,t)   (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%9.6f sec  ", 1.0*((double)(t))/((double)CLOCKS_PER_SEC)))
-#define ABC_PRTP(a,t,T) (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%9.6f sec (%6.2f %%)\n", 1.0*((double)(t))/((double)CLOCKS_PER_SEC), ((double)(T))? 100.0*((double)(t))/((double)(T)) : 0.0))
+#define ABC_PRT(a,t)    (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%14.6f sec\n", 1.0*((double)(t))/((double)CLOCKS_PER_SEC)))
+#define ABC_PRTr(a,t)   (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%14.6f sec\r", 1.0*((double)(t))/((double)CLOCKS_PER_SEC)))
+#define ABC_PRTn(a,t)   (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%14.6f sec  ", 1.0*((double)(t))/((double)CLOCKS_PER_SEC)))
+#define ABC_PRTP(a,t,T) (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%14.6f sec (%6.2f %%)\n", 1.0*((double)(t))/((double)CLOCKS_PER_SEC), ((double)(T))? 100.0*((double)(t))/((double)(T)) : 0.0))
 #define ABC_PRM(a,f)    (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%10.3f MB\n",    1.0*((double)(f))/(1<<20)))
 #define ABC_PRMr(a,f)   (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%10.3f MB\r",    1.0*((double)(f))/(1<<20)))
 #define ABC_PRMn(a,f)   (Abc_Print(1, "%s =", (a)), Abc_Print(1, "%10.3f MB  ",    1.0*((double)(f))/(1<<20)))
