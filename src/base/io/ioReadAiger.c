@@ -349,6 +349,8 @@ Abc_Ntk_t * Io_ReadAiger( char * pFileName, int fCheck )
     ABC_FREE( pName );
     pNtkNew->nConstrs = nConstr;
 
+    //@ Our mission starts here.
+
     // prepare the array of nodes
     vNodes = Vec_PtrAlloc( 1 + nInputs + nLatches + nAnds );
     Vec_PtrPush( vNodes, Abc_ObjNot( Abc_AigConst1(pNtkNew) ) );
@@ -456,6 +458,7 @@ Abc_Ntk_t * Io_ReadAiger( char * pFileName, int fCheck )
             Abc_ObjAddFanin( pObj, pNode0 );
         }
     }
+    //@  We're interested in standard AIGER only.
     else
     {
         // read the latch driver literals
@@ -475,6 +478,8 @@ Abc_Ntk_t * Io_ReadAiger( char * pFileName, int fCheck )
         Vec_IntFree( vLits );
     }
  
+    //@ Our mission stops here.
+
     // read the names if present
     pCur = pSymbols;
     if ( pCur < pContents + nFileSize && *pCur != 'c' )
