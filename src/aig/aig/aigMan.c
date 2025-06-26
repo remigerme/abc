@@ -70,6 +70,7 @@ Aig_Man_t * Aig_ManStart( int nNodesMax )
     p->pConst1 = Aig_ManFetchMemory( p );
     p->pConst1->Type = AIG_OBJ_CONST1;
     p->pConst1->fPhase = 1;
+    p->pConst1->CertifId = 0; //@ constant id for constant node
     p->nObjs[AIG_OBJ_CONST1]++;
     // start the table
     p->nTableSize = Abc_PrimeCudd( nNodesMax );

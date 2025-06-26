@@ -546,6 +546,8 @@ Aig_Obj_t * Aig_ManDupDfs_rec( Aig_Man_t * pNew, Aig_Man_t * p, Aig_Obj_t * pObj
         if ( pNew->pReprs )
             pNew->pReprs[Aig_Regular(pEquivNew)->Id] = Aig_Regular(pObjNew);
     }
+    //@ Copying
+    pObjNew->CertifId = pObj->CertifId;
     return (Aig_Obj_t *)(pObj->pData = pObjNew);
 }
 
@@ -590,6 +592,9 @@ Aig_Man_t * Aig_ManDupDfs( Aig_Man_t * p )
             pObjNew = Aig_ObjCreateCi( pNew );
             pObjNew->Level = pObj->Level;
             pObj->pData = pObjNew;
+
+            //@ Copying
+            pObjNew->CertifId = pObj->CertifId;
         }
         else if ( Aig_ObjIsCo(pObj) )
         {
@@ -597,6 +602,9 @@ Aig_Man_t * Aig_ManDupDfs( Aig_Man_t * p )
 //            assert( pObj->Level == ((Aig_Obj_t*)pObj->pData)->Level );
             pObjNew = Aig_ObjCreateCo( pNew, Aig_ObjChild0Copy(pObj) );
             pObj->pData = pObjNew;
+
+            //@ Copying - this id should never be used anyway because outputs are not nodes but signals in AIGER format
+            pObjNew->CertifId = pObj->CertifId;
         }
     }
     assert( p->pEquivs != NULL || Aig_ManBufNum(p) != 0 || Aig_ManNodeNum(p) == Aig_ManNodeNum(pNew) );

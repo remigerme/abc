@@ -66,7 +66,7 @@ typedef enum {
 } Aig_Type_t;
 
 // the AIG node
-struct Aig_Obj_t_  // 8 words
+struct Aig_Obj_t_  // 8 words //@ no longer true because of CertifId
 {
     union {                         
         Aig_Obj_t *  pNext;          // strashing table
@@ -88,6 +88,9 @@ struct Aig_Obj_t_  // 8 words
         int          iData;
         float        dData;
     };
+
+    //@ A permanent id used by certificates to refer to this node while the AIG is evolving.
+    uint64_t         CertifId;
 };
 
 // the AIG manager
@@ -284,6 +287,7 @@ static inline int          Aig_ObjIsChoice( Aig_Man_t * p, Aig_Obj_t * pObj )   
 static inline int          Aig_ObjIsCand( Aig_Obj_t * pObj )      { return pObj->Type == AIG_OBJ_CI || pObj->Type == AIG_OBJ_AND || pObj->Type == AIG_OBJ_EXOR;     }
 static inline int          Aig_ObjCioId( Aig_Obj_t * pObj )       { assert( !Aig_ObjIsNode(pObj) ); return pObj->CioId;                                            }
 static inline int          Aig_ObjId( Aig_Obj_t * pObj )          { return pObj->Id;                     }
+static inline int          Aig_ObjCertifId( Aig_Obj_t * pObj )    { return pObj->CertifId;               } //@ getter
 
 static inline int          Aig_ObjIsMarkA( Aig_Obj_t * pObj )     { return pObj->fMarkA;  }
 static inline void         Aig_ObjSetMarkA( Aig_Obj_t * pObj )    { pObj->fMarkA = 1;     }
