@@ -695,6 +695,8 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
         }
     }
 
+    //@ Our mission starts here.
+
     // set the node numbers to be used in the output file
     nNodes = 0;
     Io_ObjSetAigerNum( Abc_AigConst1(pNtk), nNodes++ );
@@ -747,6 +749,7 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
             fprintfBz2Aig( &b, "%u\n", Io_ObjMakeLit( Io_ObjAigerNum(pDriver), Abc_ObjFaninC0(pObj) ^ (Io_ObjAigerNum(pDriver) == 0) ) );
         }
     }
+    //@ We will never use compact mode (not AIGER-compliant). 
     else
     {
         Vec_Int_t * vLits = Io_WriteAigerLiterals( pNtk );
@@ -800,6 +803,8 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     }
     assert( Pos < nBufferSize );
     Extra_ProgressBarStop( pProgress );
+
+    //@ At this point, our mission is done.
 
     // write the buffer
     if ( !b.b )
