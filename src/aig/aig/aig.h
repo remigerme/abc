@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdint.h> //@ needed for uint64_t : CertifId
 
 #include "misc/vec/vec.h"
 #include "misc/util/utilCex.h"
