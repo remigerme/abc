@@ -355,15 +355,20 @@ Abc_Ntk_t * Io_ReadAiger( char * pFileName, int fCheck )
     vNodes = Vec_PtrAlloc( 1 + nInputs + nLatches + nAnds );
     Vec_PtrPush( vNodes, Abc_ObjNot( Abc_AigConst1(pNtkNew) ) );
 
+    //@ Setting CertifId of constant node.
+    Abc_ObjRegular((Abc_Obj_t *) Vec_PtrEntryLast(vNodes))->CertifId = 0;
+
     // create the PIs
     for ( i = 0; i < nInputs; i++ )
     {
-        pObj = Abc_NtkCreatePi(pNtkNew);    
+        pObj = Abc_NtkCreatePi(pNtkNew);
+        pObj->CertifId = 1 + i; //@ Setting CertifId of the primary inputs.     
         Vec_PtrPush( vNodes, pObj );
     }
     // create the POs
     for ( i = 0; i < nOutputs; i++ )
     {
+        //@ POs are not AIG nodes and have no CertifId.
         pObj = Abc_NtkCreatePo(pNtkNew);   
     }
     // create the latches
@@ -372,6 +377,9 @@ Abc_Ntk_t * Io_ReadAiger( char * pFileName, int fCheck )
     {
         pObj = Abc_NtkCreateLatch(pNtkNew);
         Abc_LatchSetInit0( pObj );
+        //@ Setting CertifId for latches.
+        //@ Warning: not sure of the roles of pNode0 and pNode1.
+        pObj->CertifId = 1 + nInputs + i;
         pNode0 = Abc_NtkCreateBi(pNtkNew);
         pNode1 = Abc_NtkCreateBo(pNtkNew);
         Abc_ObjAddFanin( pObj, pNode0 );
@@ -410,8 +418,12 @@ Abc_Ntk_t * Io_ReadAiger( char * pFileName, int fCheck )
         pNode1 = Abc_ObjNotCond( (Abc_Obj_t *)Vec_PtrEntry(vNodes, uLit1 >> 1), uLit1 & 1 );
         assert( Vec_PtrSize(vNodes) == i + 1 + nInputs + nLatches );
         Vec_PtrPush( vNodes, Abc_AigAnd((Abc_Aig_t *)pNtkNew->pManFunc, pNode0, pNode1) );
+        //@ Setting CertifId for the and gates
+        ((Abc_Obj_t *)Vec_PtrEntryLast(vNodes))->CertifId = 1 + nInputs + nLatches + i;
     }
     Extra_ProgressBarStop( pProgress );
+
+    //@ Our mission stops here.
 
     // remember the place where symbols begin
     pSymbols = pCur;
@@ -458,7 +470,6 @@ Abc_Ntk_t * Io_ReadAiger( char * pFileName, int fCheck )
             Abc_ObjAddFanin( pObj, pNode0 );
         }
     }
-    //@  We're interested in standard AIGER only.
     else
     {
         // read the latch driver literals
@@ -478,7 +489,6 @@ Abc_Ntk_t * Io_ReadAiger( char * pFileName, int fCheck )
         Vec_IntFree( vLits );
     }
  
-    //@ Our mission stops here.
 
     // read the names if present
     pCur = pSymbols;
