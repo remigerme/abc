@@ -637,7 +637,7 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     ProgressBar * pProgress;
 //    FILE * pFile;
     Abc_Obj_t * pObj, * pDriver, * pLatch;
-    int i, nNodes, nBufferSize, bzError, Pos, fExtended;
+    int i, nBufferSize, bzError, Pos, fExtended;
     unsigned char * pBuffer;
     unsigned uLit0, uLit1, uLit;
     bz2file b;
@@ -698,12 +698,13 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     //@ Our mission starts here.
 
     // set the node numbers to be used in the output file
-    nNodes = 0;
-    Io_ObjSetAigerNum( Abc_AigConst1(pNtk), nNodes++ );
+     //@ constant node is indeed 0
+     //@ was already 0 before the modification, although I thought that Const1 was true
+    Io_ObjSetAigerNum( Abc_AigConst1(pNtk), Abc_AigConst1(pNtk)->CertifId );
     Abc_NtkForEachCi( pNtk, pObj, i )
-        Io_ObjSetAigerNum( pObj, nNodes++ );
+        Io_ObjSetAigerNum( pObj, pObj->CertifId );
     Abc_AigForEachAnd( pNtk, pObj, i )
-        Io_ObjSetAigerNum( pObj, nNodes++ );
+        Io_ObjSetAigerNum( pObj, pObj->CertifId );
 
     // write the header "M I L O A" where M = I + L + A
     fprintfBz2Aig( &b, "aig%s %u %u %u %u %u", 

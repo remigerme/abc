@@ -30,7 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <stdint.h> //@ for uint64_t : CertifId
 
 #include "misc/vec/vec.h"
 #include "aig/hop/hop.h"
@@ -151,7 +150,7 @@ struct Abc_Obj_t_     // 48/72 bytes (32-bits/64-bits) //@ no longer true becaus
       float           dTemp; };
 
     //@ A permanent id used by certificates to refer to this node while the AIG is evolving.
-    uint64_t          CertifId;
+    unsigned          CertifId;
 };
 
 struct Abc_Ntk_t_ 
@@ -334,7 +333,7 @@ static inline Abc_Obj_t * Abc_ObjNotCond( Abc_Obj_t * p, int c )     { return (A
 // reading data members of the object
 static inline unsigned    Abc_ObjType( Abc_Obj_t * pObj )            { return pObj->Type;               }
 static inline unsigned    Abc_ObjId( Abc_Obj_t * pObj )              { return pObj->Id;                 }
-static inline uint64_t    Abc_ObjCertifId( Abc_Obj_t * pObj )        { return pObj->CertifId;           } //@ getter
+static inline unsigned    Abc_ObjCertifId( Abc_Obj_t * pObj )        { return pObj->CertifId;           } //@ getter
 static inline int         Abc_ObjLevel( Abc_Obj_t * pObj )           { return pObj->Level;              }
 static inline Vec_Int_t * Abc_ObjFaninVec( Abc_Obj_t * pObj )        { return &pObj->vFanins;           }
 static inline Vec_Int_t * Abc_ObjFanoutVec( Abc_Obj_t * pObj )       { return &pObj->vFanouts;          }
