@@ -637,7 +637,7 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     ProgressBar * pProgress;
 //    FILE * pFile;
     Abc_Obj_t * pObj, * pDriver, * pLatch;
-    int i, nBufferSize, bzError, Pos, fExtended;
+    int i, nNodes, nBufferSize, bzError, Pos, fExtended;
     unsigned char * pBuffer;
     unsigned uLit0, uLit1, uLit;
     bz2file b;
@@ -696,15 +696,19 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     }
 
     //@ Our mission starts here.
+    //@ We use the internal topological order of ABC AIGs because they are already correct.
+    //@ We basically don't have to modify ABC - just to make sure this pass is correctly replicated in the checker.
 
     // set the node numbers to be used in the output file
-     //@ constant node is indeed 0
-     //@ was already 0 before the modification, although I thought that Const1 was true
-    Io_ObjSetAigerNum( Abc_AigConst1(pNtk), Abc_AigConst1(pNtk)->CertifId );
+    nNodes = 0;
+    //@ constant node is indeed 0 (even though I thought Const1 was true)
+    Io_ObjSetAigerNum( Abc_AigConst1(pNtk), nNodes++ );
     Abc_NtkForEachCi( pNtk, pObj, i )
-        Io_ObjSetAigerNum( pObj, pObj->CertifId );
+        Io_ObjSetAigerNum( pObj, nNodes++ );
     Abc_AigForEachAnd( pNtk, pObj, i )
-        Io_ObjSetAigerNum( pObj, pObj->CertifId );
+        Io_ObjSetAigerNum( pObj, nNodes++ );
+
+    //@ At this point, our mission is done.
 
     // write the header "M I L O A" where M = I + L + A
     fprintfBz2Aig( &b, "aig%s %u %u %u %u %u", 
@@ -804,8 +808,6 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     }
     assert( Pos < nBufferSize );
     Extra_ProgressBarStop( pProgress );
-
-    //@ At this point, our mission is done.
 
     // write the buffer
     if ( !b.b )
