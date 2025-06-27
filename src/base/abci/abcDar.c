@@ -286,11 +286,14 @@ Aig_Man_t * Abc_NtkToDar( Abc_Ntk_t * pNtk, int fExors, int fRegisters )
     pMan->nBarBufs = pNtk->nBarBufs;
     pMan->pName = Extra_UtilStrsav( pNtk->pName );
     pMan->pSpec = Extra_UtilStrsav( pNtk->pSpec );
+
+    //@ Our mission starts here.
     // transfer the pointers to the basic nodes
     Abc_AigConst1(pNtk)->pCopy = (Abc_Obj_t *)Aig_ManConst1(pMan);
     Abc_NtkForEachCi( pNtk, pObj, i )
     {
         pObj->pCopy = (Abc_Obj_t *)Aig_ObjCreateCi(pMan);
+        ((Aig_Obj_t *)pObj->pCopy)->CertifId = pObj->CertifId; //@ Setting CertifId of CIs.
         // initialize logic level of the CIs
         ((Aig_Obj_t *)pObj->pCopy)->Level = pObj->Level;
     }
@@ -308,10 +311,14 @@ Aig_Man_t * Abc_NtkToDar( Abc_Ntk_t * pNtk, int fExors, int fRegisters )
 //    Abc_NtkForEachNode( pNtk, pObj, i )
     {
         pObj->pCopy = (Abc_Obj_t *)Aig_And( pMan, (Aig_Obj_t *)Abc_ObjChild0Copy(pObj), (Aig_Obj_t *)Abc_ObjChild1Copy(pObj) );
+        ((Aig_Obj_t *)pObj->pCopy)->CertifId = pObj->CertifId; //@ Setting CertifId of and gates.
 //        Abc_Print( 1, "%d->%d ", pObj->Id, ((Aig_Obj_t *)pObj->pCopy)->Id );
     }
     Vec_PtrFree( vNodes );
     pMan->fAddStrash = 0;
+
+    //@ Our mission stops here (remember, POs do not have CertifId).
+
     // create the POs
     Abc_NtkForEachCo( pNtk, pObj, i )
         Aig_ObjCreateCo( pMan, (Aig_Obj_t *)Abc_ObjChild0Copy(pObj) );
