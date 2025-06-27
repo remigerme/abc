@@ -397,7 +397,9 @@ void Aig_ManPrintStats( Aig_Man_t * p )
 //    printf( "Del = %6d  ",  p->nDeleted );
 //    printf( "Lev = %3d  ",  Aig_ManLevelNum(p) );
 //    printf( "Max = %7d  ",  Aig_ManObjNumMax(p) );
-    printf( "lev = %3d",  Aig_ManLevels(p) );
+    printf( "lev = %3d  ",  Aig_ManLevels(p) );
+    printf( "obj = %7d  ", Aig_ManObjNum( p ) );
+    printf( "objmax = %7d", Aig_ManObjNumMax( p ) );
     printf( "\n" );
     fflush( stdout );
 }
