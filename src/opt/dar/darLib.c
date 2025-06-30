@@ -880,6 +880,12 @@ int Dar_LibEval_rec( Dar_LibObj_t * pObj, int Out, int nNodesSaved, int Required
     assert( pObj->Num > 3 );
     if ( pData->Level > Required )
         return 0xff;
+
+    //@ If the AIG node already exists and is not in the MFFC,
+    //@ we won't have to create any node.
+    //@ No node was saved nor added so the cost is 0.
+    //@ If the AIG node already existed but was in the MFFC,
+    //@ we would have to recreate it (cause we counted it as deleted).
     if ( pData->pFunc && !pData->fMffc )
     {
         if ( pPower )
@@ -887,6 +893,9 @@ int Dar_LibEval_rec( Dar_LibObj_t * pObj, int Out, int nNodesSaved, int Required
         return 0;
     }
     // this is a new node - get a bound on the area of its branches
+    //@ This is either:
+    //@ - a node that previously existed in the old structure but was in the MFFC so was deleted
+    //@ - a new node that was not in the old structure.
     nNodesSaved--;
     Area = Dar_LibEval_rec( Dar_LibObj(s_DarLib, pObj->Fan0), Out, nNodesSaved, Required+1, pPower? &Power0 : NULL );
     if ( Area > nNodesSaved )
@@ -1006,8 +1015,16 @@ Aig_Obj_t * Dar_LibBuildBest_rec( Dar_Man_t * p, Dar_LibObj_t * pObj )
 {
     Aig_Obj_t * pFanin0, * pFanin1;
     Dar_LibDat_t * pData = s_DarLib->pDatas + pObj->Num;
-    if ( pData->pFunc )
+    if ( pData->pFunc ) {
+        //@ We are reusing an existing node.
+        //@ We maintain the CertifId by returning the existing AIG node.
+        //@ No mutation needs to be emitted.
         return pData->pFunc;
+    }
+    //@ We are creating a new node.
+    //@ Here we must:
+    //@ - fetch a new CertifId
+    //@ - emit a `create` mutation.
     pFanin0 = Dar_LibBuildBest_rec( p, Dar_LibObj(s_DarLib, pObj->Fan0) );
     pFanin1 = Dar_LibBuildBest_rec( p, Dar_LibObj(s_DarLib, pObj->Fan1) );
     pFanin0 = Aig_NotCond( pFanin0, pObj->fCompl0 );
