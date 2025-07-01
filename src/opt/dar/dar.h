@@ -92,6 +92,7 @@ extern void            Dar_BalancePrintStats( Aig_Man_t * p );
 /*=== darCore.c ========================================================*/
 extern void            Dar_ManDefaultRwrParams( Dar_RwrPar_t * pPars );
 extern int             Dar_ManRewrite( Aig_Man_t * pAig, Dar_RwrPar_t * pPars );
+extern int             Dar_ManRewriteCertificates( Aig_Man_t * pAig, Dar_RwrPar_t * pPars, Vec_Ptr_t * certificates );
 extern Aig_MmFixed_t * Dar_ManComputeCuts( Aig_Man_t * pAig, int nCutsMax, int fSkipTtMin, int fVerbose );
 /*=== darRefact.c ========================================================*/
 extern void            Dar_ManDefaultRefParams( Dar_RefPar_t * pPars );

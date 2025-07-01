@@ -146,7 +146,7 @@ extern void            Dar_LibStart();
 extern void            Dar_LibStop();
 extern void            Dar_LibReturnCanonicals( unsigned * pCanons );
 extern void            Dar_LibEval( Dar_Man_t * p, Aig_Obj_t * pRoot, Dar_Cut_t * pCut, int Required, int * pnMffcSize );
-extern Aig_Obj_t *     Dar_LibBuildBest( Dar_Man_t * p );
+extern Aig_Obj_t *     Dar_LibBuildBest( Dar_Man_t * p, Vec_Ptr_t * mutations);
 /*=== darMan.c ============================================================*/
 extern Dar_Man_t *     Dar_ManStart( Aig_Man_t * pAig, Dar_RwrPar_t * pPars );
 extern void            Dar_ManStop( Dar_Man_t * p );

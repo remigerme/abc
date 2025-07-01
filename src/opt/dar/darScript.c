@@ -22,6 +22,7 @@
 #include "proof/dch/dch.h"
 #include "aig/gia/gia.h"
 #include "aig/gia/giaAig.h"
+#include "certificate.h"
 
 ABC_NAMESPACE_IMPL_START
 
@@ -251,7 +252,23 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     pParsRwr->fVerbose = 0;//fVerbose;
     pParsRef->fVerbose = 0;//fVerbose;
 
+    //@ Allocating certificates
+    Vec_Ptr_t *certificates = Vec_PtrAlloc(6);
+
+    //@ Checking certificate ids were properly initialized (required but not sufficient condition).
+    int i;
+    Aig_Obj_t * pObj;
+    Aig_ManForEachObj(pAig, pObj, i) {
+        assert(pObj->CertifId != 0 || Aig_ObjIsCo(pObj) || Aig_ObjIsConst1(pObj));
+    }
+
     pAig = Aig_ManDupDfs( pAig ); 
+
+    //@ Checking certificate ids were properly handled by Aig_ManDupDfs (required but not sufficient condition).
+    Aig_ManForEachObj(pAig, pObj, i) {
+        assert(pObj->CertifId != 0 || Aig_ObjIsCo(pObj) || Aig_ObjIsConst1(pObj));
+    }
+
     if ( fVerbose ) printf( "Starting:  " ), Aig_ManPrintStats( pAig );
 /*
     // balance
@@ -265,7 +282,13 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     // rewrite
 //    Dar_ManRewrite( pAig, pParsRwr );
     pParsRwr->fUpdateLevel = 0;  // disable level update
-    Dar_ManRewrite( pAig, pParsRwr );
+    Dar_ManRewriteCertificates( pAig, pParsRwr, certificates);
+
+    //@ Checking certificate ids were properly handled by Dar_ManRewriteCertificates (required but not sufficient condition).
+    Aig_ManForEachObj(pAig, pObj, i) {
+        assert(pObj->CertifId != 0 || Aig_ObjIsCo(pObj) || Aig_ObjIsConst1(pObj));
+    }
+
     pParsRwr->fUpdateLevel = fUpdateLevel;  // reenable level update if needed
 
     pAig = Aig_ManDupDfs( pTemp = pAig ); 
@@ -287,7 +310,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     }
     
     // rewrite
-    Dar_ManRewrite( pAig, pParsRwr );
+    Dar_ManRewriteCertificates( pAig, pParsRwr, certificates );
     pAig = Aig_ManDupDfs( pTemp = pAig ); 
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "Rewrite:   " ), Aig_ManPrintStats( pAig );
@@ -296,7 +319,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     pParsRef->fUseZeros = 1;
     
     // rewrite
-    Dar_ManRewrite( pAig, pParsRwr );
+    Dar_ManRewriteCertificates( pAig, pParsRwr, certificates );
     pAig = Aig_ManDupDfs( pTemp = pAig ); 
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "RewriteZ:  " ), Aig_ManPrintStats( pAig );
@@ -316,7 +339,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     if ( fVerbose ) printf( "RefactorZ: " ), Aig_ManPrintStats( pAig );
     
     // rewrite
-    Dar_ManRewrite( pAig, pParsRwr );
+    Dar_ManRewriteCertificates( pAig, pParsRwr, certificates );
     pAig = Aig_ManDupDfs( pTemp = pAig ); 
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "RewriteZ:  " ), Aig_ManPrintStats( pAig );
@@ -328,6 +351,12 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "Balance:   " ), Aig_ManPrintStats( pAig );
     }
+
+    //@ Writing certificates to a file
+    FILE *fp = fopen("dump.certif", "wb");
+    write_certificates(certificates, fp);
+    fclose(fp);
+
     return pAig;
 }
 
