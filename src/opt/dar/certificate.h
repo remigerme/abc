@@ -1,6 +1,10 @@
 #ifndef ABC_CEC_certificate
 #define ABC_CEC_certificate
 
+#include "aig/aig/aig.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 typedef enum MutationType_t { MutationReplace = 0, MutationCreate = 1 } MutationType_t;
 
 typedef struct MutationReplace_t {
