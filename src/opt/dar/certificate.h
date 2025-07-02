@@ -83,24 +83,24 @@ static inline Certificate_t *new_certificate(Vec_Ptr_t *mutations, Vec_Ptr_t *hi
 
 static inline void write_certificate(Certificate_t *certificate, FILE *fp) {
     int n_mut = Vec_PtrSize(certificate->mutations);
-    size_t written = fwrite(&n_mut, sizeof(int), 1, fp);
+    fwrite(&n_mut, sizeof(int), 1, fp);
 
     Mutation_t *mut;
     int i;
     Vec_PtrForEachEntry(Mutation_t *, certificate->mutations, mut, i) { write_mutation(mut, fp); }
 
     int n_hints = Vec_PtrSize(certificate->hints);
-    written = fwrite(&n_hints, sizeof(int), 1, fp);
+    fwrite(&n_hints, sizeof(int), 1, fp);
 
     Hint_t *hint;
     Vec_PtrForEachEntry(Hint_t *, certificate->hints, hint, i) {
-        written = fwrite(hint, sizeof(Hint_t), 1, fp);
+        fwrite(hint, sizeof(Hint_t), 1, fp);
     }
 }
 
 static inline void write_certificates(Vec_Ptr_t *certificates, FILE *fp) {
     int n_certif = Vec_PtrSize(certificates);
-    size_t written = fwrite(&n_certif, sizeof(int), 1, fp);
+    fwrite(&n_certif, sizeof(int), 1, fp);
 
     int i;
     Certificate_t *certif;
@@ -126,6 +126,11 @@ static inline int fresh_certif_id(CertifIdMan_t *certif_man) {
     // Manager was not provided, let's return a dummy CertifId.
     if (certif_man == NULL)
         return 4;
+
+    if (certif_man->internal == INT32_MAX) {
+        assert(0 && "max int reached");
+    }
+
     return certif_man->internal++;
 }
 
