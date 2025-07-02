@@ -2,6 +2,7 @@
 #define ABC_CEC_certificate
 
 #include "aig/aig/aig.h"
+#include "misc/vec/vec.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
