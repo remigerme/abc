@@ -1582,11 +1582,11 @@ Abc_Ntk_t * Abc_NtkDRewrite( Abc_Ntk_t * pNtk, Dar_RwrPar_t * pPars )
 //    pMan = Dar_ManBalance( pTemp = pMan, pPars->fUpdateLevel );
 //    Aig_ManStop( pTemp );
 
-    int i;
-    Aig_Obj_t * pObj;
-    Aig_ManForEachObj(pMan, pObj, i) {
-        printf("bd=%d ", pObj->CertifId);
-    }
+    // int i;
+    // Aig_Obj_t * pObj;
+    // Aig_ManForEachObj(pMan, pObj, i) {
+    //     printf("bd=%d ", pObj->CertifId);
+    // }
 
 clk = Abc_Clock();
     pMan = Aig_ManDupDfs( pTemp = pMan ); 
@@ -1597,10 +1597,14 @@ clk = Abc_Clock();
     pNtkAig = Abc_NtkFromDar( pNtk, pMan );
     Aig_ManStop( pMan );
 
-    Abc_Obj_t * pObj_;
-    Abc_NtkForEachObj(pNtkAig, pObj_, i) {
-        printf("ad=%d ", pObj_->CertifId);
-    }
+    // Abc_Obj_t * pObj_;
+    // Abc_NtkForEachObj(pNtkAig, pObj_, i) {
+    //     printf("ad=%d ", pObj_->CertifId);
+    // }
+
+    FILE *fp = fopen("drw.certif", "wb");
+    write_certificates(certificates, fp);
+    fclose(fp);
 
     return pNtkAig;
 }
