@@ -2,10 +2,13 @@
 #define ABC_CEC_certificate
 
 #include "aig/aig/aig.h"
+#include "misc/util/abc_namespaces.h"
 #include "misc/vec/vec.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+ABC_NAMESPACE_HEADER_START
 
 typedef enum MutationType_t { MutationReplace = 0, MutationCreate = 1 } MutationType_t;
 
@@ -139,5 +142,7 @@ static inline int fresh_certif_id(CertifIdMan_t *certif_man) {
 
     return certif_man->internal++;
 }
+
+ABC_NAMESPACE_HEADER_END
 
 #endif
