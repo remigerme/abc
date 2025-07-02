@@ -146,6 +146,7 @@ p->timeCuts += Abc_Clock() - clk;
 
         //@ Old version - just adding a dummy mutation
         Vec_Ptr_t *mutations = Vec_PtrAlloc(1);
+        CertifIdMan_t * certif_man = NULL;
 
         // check if there is a trivial cut
         Dar_ObjForEachCut( pObj, pCut, k )
@@ -195,7 +196,7 @@ p->timeCuts += Abc_Clock() - clk;
         Dar_ObjSetCuts( pObj, NULL );
         // if we end up here, a rewriting step is accepted
         nNodeBefore = Aig_ManNodeNum( pAig );
-        pObjNew = Dar_LibBuildBest( p , mutations ); // pObjNew can be complemented!
+        pObjNew = Dar_LibBuildBest( p , mutations, certif_man ); // pObjNew can be complemented!
         pObjNew = Aig_NotCond( pObjNew, Aig_ObjPhaseReal(pObjNew) ^ pObj->fPhase );
         assert( (int)Aig_Regular(pObjNew)->Level <= Required );
         // replace the node
@@ -301,6 +302,7 @@ int Dar_ManRewriteCertificates( Aig_Man_t * pAig, Dar_RwrPar_t * pPars, Vec_Ptr_
     //@ Creating vectors for the certificate.
     Vec_Ptr_t *mutations = Vec_PtrAlloc(500);
     Vec_Ptr_t *hints = Vec_PtrAlloc(50);
+    CertifIdMan_t *certif_man = new_certif_id_man(pAig);
 
 //    pProgress = Bar_ProgressStart( stdout, nNodesOld );
     Aig_ManForEachObj( pAig, pObj, i )
@@ -390,7 +392,7 @@ p->timeCuts += Abc_Clock() - clk;
         Dar_ObjSetCuts( pObj, NULL );
         // if we end up here, a rewriting step is accepted
         nNodeBefore = Aig_ManNodeNum( pAig );
-        pObjNew = Dar_LibBuildBest( p , mutations); // pObjNew can be complemented!
+        pObjNew = Dar_LibBuildBest( p , mutations, certif_man ); // pObjNew can be complemented!
         pObjNew = Aig_NotCond( pObjNew, Aig_ObjPhaseReal(pObjNew) ^ pObj->fPhase );
         assert( (int)Aig_Regular(pObjNew)->Level <= Required );
 

@@ -1012,7 +1012,7 @@ void Dar_LibBuildClear_rec( Dar_LibObj_t * pObj, int * pCounter )
   SeeAlso     []
 
 ***********************************************************************/
-Aig_Obj_t * Dar_LibBuildBest_rec( Dar_Man_t * p, Dar_LibObj_t * pObj, Vec_Ptr_t * mutations )
+Aig_Obj_t * Dar_LibBuildBest_rec( Dar_Man_t * p, Dar_LibObj_t * pObj, Vec_Ptr_t * mutations, CertifIdMan_t * certif_man )
 {
     Aig_Obj_t * pFanin0, * pFanin1;
     Dar_LibDat_t * pData = s_DarLib->pDatas + pObj->Num;
@@ -1026,12 +1026,12 @@ Aig_Obj_t * Dar_LibBuildBest_rec( Dar_Man_t * p, Dar_LibObj_t * pObj, Vec_Ptr_t 
     //@ Here we must:
     //@ - fetch a new CertifId
     //@ - emit a `create` mutation.
-    pFanin0 = Dar_LibBuildBest_rec( p, Dar_LibObj(s_DarLib, pObj->Fan0), mutations );
-    pFanin1 = Dar_LibBuildBest_rec( p, Dar_LibObj(s_DarLib, pObj->Fan1), mutations );
+    pFanin0 = Dar_LibBuildBest_rec( p, Dar_LibObj(s_DarLib, pObj->Fan0), mutations, certif_man );
+    pFanin1 = Dar_LibBuildBest_rec( p, Dar_LibObj(s_DarLib, pObj->Fan1), mutations, certif_man );
     pFanin0 = Aig_NotCond( pFanin0, pObj->fCompl0 );
     pFanin1 = Aig_NotCond( pFanin1, pObj->fCompl1 );
     pData->pFunc = Aig_And( p->pAig, pFanin0, pFanin1 );
-    pData->pFunc->CertifId = 2;
+    pData->pFunc->CertifId = fresh_certif_id(certif_man);
 
     Mutation_t *mut = new_mutation_create(
         pData->pFunc->CertifId,
@@ -1057,13 +1057,13 @@ Aig_Obj_t * Dar_LibBuildBest_rec( Dar_Man_t * p, Dar_LibObj_t * pObj, Vec_Ptr_t 
   SeeAlso     []
 
 ***********************************************************************/
-Aig_Obj_t * Dar_LibBuildBest( Dar_Man_t * p, Vec_Ptr_t * mutations )
+Aig_Obj_t * Dar_LibBuildBest( Dar_Man_t * p, Vec_Ptr_t * mutations, CertifIdMan_t * certif_man )
 {
     int i, Counter = 4;
     for ( i = 0; i < Vec_PtrSize(p->vLeavesBest); i++ )
         s_DarLib->pDatas[i].pFunc = (Aig_Obj_t *)Vec_PtrEntry( p->vLeavesBest, i );
     Dar_LibBuildClear_rec( Dar_LibObj(s_DarLib, p->OutBest), &Counter );
-    return Dar_LibBuildBest_rec( p, Dar_LibObj(s_DarLib, p->OutBest), mutations);
+    return Dar_LibBuildBest_rec( p, Dar_LibObj(s_DarLib, p->OutBest), mutations, certif_man );
 }
 
 

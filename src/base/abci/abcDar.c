@@ -442,14 +442,19 @@ Abc_Ntk_t * Abc_NtkFromDar( Abc_Ntk_t * pNtkOld, Aig_Man_t * pMan )
         pObj->pData = Abc_NtkCi(pNtkNew, i);
         // initialize logic level of the CIs
         ((Abc_Obj_t *)pObj->pData)->Level = pObj->Level;
+
+        //@ Setting CertifId
+        ((Abc_Obj_t *)pObj->pData)->CertifId = pObj->CertifId;
     }
     // rebuild the AIG
     vNodes = Aig_ManDfs( pMan, 1 );
-    Vec_PtrForEachEntry( Aig_Obj_t *, vNodes, pObj, i )
+    Vec_PtrForEachEntry( Aig_Obj_t *, vNodes, pObj, i ) {
         if ( Aig_ObjIsBuf(pObj) )
             pObj->pData = (Abc_Obj_t *)Aig_ObjChild0Copy(pObj);
         else
             pObj->pData = Abc_AigAnd( (Abc_Aig_t *)pNtkNew->pManFunc, (Abc_Obj_t *)Aig_ObjChild0Copy(pObj), (Abc_Obj_t *)Aig_ObjChild1Copy(pObj) );
+        ((Abc_Obj_t *)pObj->pData)->CertifId = pObj->CertifId;
+    }
     Vec_PtrFree( vNodes );
     // connect the PO nodes
     Aig_ManForEachCo( pMan, pObj, i )
@@ -1571,9 +1576,17 @@ Abc_Ntk_t * Abc_NtkDRewrite( Abc_Ntk_t * pNtk, Dar_RwrPar_t * pPars )
         Vec_VecFree( vParts );
     }
 */
-    Dar_ManRewrite( pMan, pPars );
+
+    Vec_Ptr_t *certificates = Vec_PtrAlloc(6);
+    Dar_ManRewriteCertificates( pMan, pPars, certificates );
 //    pMan = Dar_ManBalance( pTemp = pMan, pPars->fUpdateLevel );
 //    Aig_ManStop( pTemp );
+
+    int i;
+    Aig_Obj_t * pObj;
+    Aig_ManForEachObj(pMan, pObj, i) {
+        printf("bd=%d ", pObj->CertifId);
+    }
 
 clk = Abc_Clock();
     pMan = Aig_ManDupDfs( pTemp = pMan ); 
@@ -1583,6 +1596,12 @@ clk = Abc_Clock();
 //    Aig_ManPrintStats( pMan );
     pNtkAig = Abc_NtkFromDar( pNtk, pMan );
     Aig_ManStop( pMan );
+
+    Abc_Obj_t * pObj_;
+    Abc_NtkForEachObj(pNtkAig, pObj_, i) {
+        printf("ad=%d ", pObj_->CertifId);
+    }
+
     return pNtkAig;
 }
 
@@ -1652,6 +1671,13 @@ clk = Abc_Clock();
 
 //    Aig_ManPrintStats( pMan );
     pNtkAig = Abc_NtkFromDar( pNtk, pMan );
+
+    int i;
+    Abc_Obj_t * pObj;
+    Abc_NtkForEachObj(pNtkAig, pObj, i) {
+        printf("id=%d ", pObj->CertifId);
+    }
+
     Aig_ManStop( pMan );
     return pNtkAig;
 }

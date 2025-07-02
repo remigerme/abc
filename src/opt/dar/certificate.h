@@ -107,4 +107,26 @@ static inline void write_certificates(Vec_Ptr_t *certificates, FILE *fp) {
     Vec_PtrForEachEntry(Certificate_t *, certificates, certif, i) { write_certificate(certif, fp); }
 }
 
+typedef struct CertifIdMan_t {
+    Aig_Man_t *p;
+
+    // temporary drafty manager
+    int internal;
+} CertifIdMan_t;
+
+static inline CertifIdMan_t *new_certif_id_man(Aig_Man_t *p) {
+    int internal = Aig_ManObjNumMax(p) + 1;
+    CertifIdMan_t *certif_man = (CertifIdMan_t *)malloc(sizeof(CertifIdMan_t));
+    certif_man->p = p;
+    certif_man->internal = internal;
+    return certif_man;
+}
+
+static inline int fresh_certif_id(CertifIdMan_t *certif_man) {
+    // Manager was not provided, let's return a dummy CertifId.
+    if (certif_man == NULL)
+        return 4;
+    return certif_man->internal++;
+}
+
 #endif
