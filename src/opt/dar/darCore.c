@@ -350,8 +350,10 @@ p->timeCuts += Abc_Clock() - clk;
                 assert( pCut->uTruth == 0 || pCut->uTruth == 0xFFFF );
                 pObjNew = Aig_NotCond( Aig_ManConst1(p->pAig), pCut->uTruth==0 );
 
+                //@ TODO EXPLAIN CONSISTENCY
                 int complement = pCut->uTruth != 0;
-                Mutation_t *mut = new_mutation_replace(0, 0, complement);
+                Mutation_t *mut = new_mutation_replace(pObj->CertifId, 0, complement);
+                Vec_PtrPush(mutations, mut);
             }
             else
             {
