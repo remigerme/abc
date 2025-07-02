@@ -2,6 +2,7 @@
 #define ABC_CEC_certificate
 
 #include "aig/aig/aig.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -131,7 +132,7 @@ static inline int fresh_certif_id(CertifIdMan_t *certif_man) {
     if (certif_man == NULL)
         return 4;
 
-    if (certif_man->internal == INT32_MAX) {
+    if (certif_man->internal == INT_MAX) {
         assert(0 && "max int reached");
     }
 
