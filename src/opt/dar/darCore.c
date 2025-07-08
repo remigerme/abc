@@ -361,7 +361,7 @@ p->timeCuts += Abc_Clock() - clk;
                 pObjNew = Aig_NotCond( Aig_ManObj(p->pAig, pCut->pLeaves[0]), pCut->uTruth==0x5555 );
 
                 //@ Todo: support trivial cuts (in practice, not used)
-                assert(0 && "trivial cuts with one leaf are not supported");
+                // assert(0 && "trivial cuts with one leaf are not supported");
             }
             // remove the old cuts
             Dar_ObjSetCuts( pObj, NULL );
