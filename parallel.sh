@@ -37,6 +37,8 @@ while IFS= read -r -d '' aig_file; do
     
     circuit_name=$(basename "$aig_file" .aig)
     relative_path=$(dirname "${aig_file#benchmark/EPFLfull/}")
-    process_circuit "$aig_file" "$circuit_name" "$relative_path"
+    process_circuit "$aig_file" "$circuit_name" "$relative_path" &
     
 done < <(find benchmark/EPFLfull -name "*.aig" -type f -print0)
+
+wait
