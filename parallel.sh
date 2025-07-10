@@ -6,6 +6,7 @@ if [ ! -d "benchmark/EPFLfull" ]; then
 fi
 
 mkdir -p benchmark/epfl_processed
+mkdir -p benchmark/cpu_processed
 
 process_circuit_10x() {
     local aig_file="$1"
@@ -43,13 +44,14 @@ process_circuit_mtm() {
     local output_dir="benchmark/epfl_processed/$relative_path"
     mkdir -p "$output_dir"
     
+    local circuit="$output_dir/${circuit_name}.aig"
     local circuit_dc2="$output_dir/${circuit_name}_dc2.aig"
     local circuit_log="$output_dir/${circuit_name}.log"
     local circuit_ps="$output_dir/${circuit_name}.ps"
     local circuit_dc2_ps="$output_dir/${circuit_name}_dc2.ps"
 
     # Optimizing circuit
-    ./abc -c "&r $aig_file; &dc2; &w $circuit_dc2;"
+    ./abc -c "&r $aig_file; &w $circuit; &dc2; &w $circuit_dc2;"
 
     # Dumping stats
     ./abc -c "&r $aig_file; &ps;" > "$circuit_ps"
@@ -64,16 +66,17 @@ process_circuit_cpu() {
     local circuit_name="$2"
     local relative_path="$3"
     
-    local output_dir="benchmark/cpu/$relative_path"
+    local output_dir="benchmark/cpu_processed/$relative_path"
     mkdir -p "$output_dir"
-    
+
+    local circuit="$output_dir/${circuit_name}.aig"
     local circuit_dc2="$output_dir/${circuit_name}_dc2.aig"
     local circuit_log="$output_dir/${circuit_name}.log"
     local circuit_ps="$output_dir/${circuit_name}.ps"
     local circuit_dc2_ps="$output_dir/${circuit_name}_dc2.ps"
 
     # Optimizing circuit
-    ./abc -c "&r $aig_file; &dc2; &w $circuit_dc2;"
+    ./abc -c "&r $aig_file; &w $circuit; &dc2; &w $circuit_dc2;"
 
     # Dumping stats
     ./abc -c "&r $aig_file; &ps;" > "$circuit_ps"
@@ -101,5 +104,14 @@ while IFS= read -r -d '' aig_file; do
     relative_path=$(dirname "${aig_file#benchmark/cpu/}")    
     process_circuit_cpu "$aig_file" "$circuit_name" "$relative_path" &
 done < <(find benchmark/cpu -name "*.aig" -type f -print0)
+
+wait
+
+./extract_and_gates.sh benchmark/cpu_processed &
+./extract_and_gates.sh benchmark/epfl_processed &
+./extract_levels.sh benchmark/cpu_processed &
+./extract_levels.sh benchmark/epfl_processed &
+./extract_time.sh benchmark/cpu_processed &
+./extract_time.sh benchmark/epfl_processed &
 
 wait
