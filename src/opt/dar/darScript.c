@@ -256,18 +256,12 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     Vec_Ptr_t *certificates = Vec_PtrAlloc(6);
 
     //@ Checking certificate ids were properly initialized (required but not sufficient condition).
-    int i;
-    Aig_Obj_t * pObj;
-    Aig_ManForEachObj(pAig, pObj, i) {
-        // assert(pObj->CertifId != 0 || Aig_ObjIsCo(pObj) || Aig_ObjIsConst1(pObj));
-    }
+    check_certif_id(pAig);
 
     pAig = Aig_ManDupDfs( pAig ); 
 
     //@ Checking certificate ids were properly handled by Aig_ManDupDfs (required but not sufficient condition).
-    Aig_ManForEachObj(pAig, pObj, i) {
-        // assert(pObj->CertifId != 0 || Aig_ObjIsCo(pObj) || Aig_ObjIsConst1(pObj));
-    }
+    check_certif_id(pAig);
 
     if ( fVerbose ) printf( "Starting:  " ), Aig_ManPrintStats( pAig );
 /*
@@ -285,9 +279,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     Dar_ManRewriteCertificates( pAig, pParsRwr, certificates);
 
     //@ Checking certificate ids were properly handled by Dar_ManRewriteCertificates (required but not sufficient condition).
-    Aig_ManForEachObj(pAig, pObj, i) {
-        // assert(pObj->CertifId != 0 || Aig_ObjIsCo(pObj) || Aig_ObjIsConst1(pObj));
-    }
+    check_certif_id(pAig);
 
     pParsRwr->fUpdateLevel = fUpdateLevel;  // reenable level update if needed
 

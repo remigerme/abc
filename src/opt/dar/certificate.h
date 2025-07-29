@@ -143,6 +143,24 @@ static inline int fresh_certif_id(CertifIdMan_t *certif_man) {
     return certif_man->internal++;
 }
 
+/*********/
+/* DEBUG */
+/*********/
+
+static inline void print_certif_id(Aig_Man_t *pAig) {
+    int i;
+    Aig_Obj_t *pObj;
+    Aig_ManForEachObj(pAig, pObj, i) printf("%d(%d) ", pObj->CertifId, pObj->Id);
+    printf("\n\n");
+}
+
+static inline void check_certif_id(Aig_Man_t *pAig) {
+    int i;
+    Aig_Obj_t *pObj;
+    Aig_ManForEachObj(pAig, pObj, i)
+        assert(pObj->CertifId != 0 || Aig_ObjIsCo(pObj) || Aig_ObjIsConst1(pObj));
+}
+
 ABC_NAMESPACE_HEADER_END
 
 #endif
