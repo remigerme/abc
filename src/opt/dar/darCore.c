@@ -349,20 +349,20 @@ p->timeCuts += Abc_Clock() - clk;
             {
                 assert( pCut->uTruth == 0 || pCut->uTruth == 0xFFFF );
                 pObjNew = Aig_NotCond( Aig_ManConst1(p->pAig), pCut->uTruth==0 );
-
-                //@ TODO EXPLAIN CONSISTENCY
-                int complement = pCut->uTruth != 0;
-                Mutation_t *mut = new_mutation_replace(pObj->CertifId, 0, complement);
-                Vec_PtrPush(mutations, mut);
             }
             else
             {
                 assert( pCut->uTruth == 0xAAAA || pCut->uTruth == 0x5555 );
                 pObjNew = Aig_NotCond( Aig_ManObj(p->pAig, pCut->pLeaves[0]), pCut->uTruth==0x5555 );
-
-                //@ Todo: support trivial cuts (in practice, not used)
-                // assert(0 && "trivial cuts with one leaf are not supported");
             }
+            //@ Saving mutation.
+            //@ TODO : IS COMPLEMENT CORRECT FOR CONSTANT NODE ?
+            int old_id = Aig_Regular(pObj)->CertifId;
+            int new_id = Aig_Regular(pObjNew)->CertifId;
+            int complement = Aig_IsComplement(pObjNew);
+            Mutation_t *mut = new_mutation_replace(old_id, new_id, complement);
+            Vec_PtrPush(mutations, mut);
+
             // remove the old cuts
             Dar_ObjSetCuts( pObj, NULL );
             // replace the node
@@ -395,15 +395,15 @@ p->timeCuts += Abc_Clock() - clk;
         // if we end up here, a rewriting step is accepted
         nNodeBefore = Aig_ManNodeNum( pAig );
         pObjNew = Dar_LibBuildBest( p , mutations, certif_man ); // pObjNew can be complemented!
-        pObjNew = Aig_NotCond( pObjNew, Aig_ObjPhaseReal(pObjNew) ^ pObj->fPhase );
+        int complement = Aig_ObjPhaseReal(pObjNew) ^ pObj->fPhase;
+        pObjNew = Aig_NotCond( pObjNew, complement );
         assert( (int)Aig_Regular(pObjNew)->Level <= Required );
 
         //@ Emitting the certificates here:
         //@ - a `replace_node` mutation
         //@ - the hint associated with the rewrite.
-        int old_id = pObj->CertifId;
-        int new_id = pObjNew->CertifId;
-        int complement = Aig_ObjPhaseReal(pObjNew) ^ pObj->fPhase;
+        int old_id = Aig_Regular(pObj)->CertifId;
+        int new_id = Aig_Regular(pObjNew)->CertifId;
 
         Mutation_t *mut = new_mutation_replace(
             old_id,
@@ -418,6 +418,9 @@ p->timeCuts += Abc_Clock() - clk;
             complement
         );
         Vec_PtrPush(hints, (void *)hint);
+
+        assert(Aig_ObjIsAnd(pObj));
+        printf("replacing %d(%d) with %d(%d)\n", pObj->CertifId, pObj->Id,  Aig_Regular(pObjNew)->CertifId, Aig_Regular(pObjNew)->Id);
 
         // replace the node
         Aig_ObjReplace( pAig, pObj, pObjNew, p->pPars->fUpdateLevel );
@@ -475,6 +478,8 @@ p->timeOther = p->timeTotal - p->timeCuts - p->timeEval;
         printf( "Aig_ManRewrite: The network check has failed.\n" );
         return 0;
     }
+
+    check_certif_id(pAig);
     return 1;
 }
 
