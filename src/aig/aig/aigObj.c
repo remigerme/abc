@@ -487,10 +487,19 @@ void Aig_ObjReplace( Aig_Man_t * p, Aig_Obj_t * pObjOld, Aig_Obj_t * pObjNew, in
     pObjNewR->nRefs++;
     Aig_ObjDelete_rec( p, pObjOld, 0 );
     pObjNewR->nRefs--;
+
+    //@ Updating CertifId of the old object.
+    pObjOld->CertifId = Aig_Regular(pObjNew)->CertifId;
+
     // if the new object is complemented or already used, create a buffer
     p->nObjs[pObjOld->Type]--;
     if ( Aig_IsComplement(pObjNew) || Aig_ObjRefs(pObjNew) > 0 || !Aig_ObjIsNode(pObjNew) )
     {
+
+        //@ Note that Aig_ObjRefs is relevant only iff the obj is not complemented.
+        //@ In theory, you must call Aig_ObjRefs(Aig_Regular(pObjNew)) to get a relevant number of refs.
+        //@ Here if the object is not regular (ie is complemented, the condition will be true anyway).
+        
         pObjOld->Type = AIG_OBJ_BUF;
         Aig_ObjConnect( p, pObjOld, pObjNew, NULL );
         p->nBufReplaces++;
