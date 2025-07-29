@@ -157,8 +157,11 @@ static inline void print_certif_id(Aig_Man_t *pAig) {
 static inline void check_certif_id(Aig_Man_t *pAig) {
     int i;
     Aig_Obj_t *pObj;
-    Aig_ManForEachObj(pAig, pObj, i)
+    Aig_ManForEachObj(pAig, pObj, i) {
+        if (pObj->CertifId == 0 && pObj->Type != AIG_OBJ_CONST1)
+            printf("type:%d certifid:0 id:%d\n", pObj->Type, pObj->Id);
         assert(pObj->CertifId != 0 || Aig_ObjIsCo(pObj) || Aig_ObjIsConst1(pObj));
+    }
 }
 
 ABC_NAMESPACE_HEADER_END
