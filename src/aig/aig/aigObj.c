@@ -414,6 +414,10 @@ void Aig_NodeFixBufferFanins( Aig_Man_t * p, Aig_Obj_t * pObj, int fUpdateLevel 
 //        pResult = Aig_Latch( p, pFanReal0, Aig_ObjInit(pObj) );
     else 
         assert( 0 );
+
+    //@ Node is still the same - don't forget to assign CertifId.
+    Aig_Regular(pResult)->CertifId = Aig_Regular(pObj)->CertifId;
+
     // replace the node with buffer by the node without buffer
     Aig_ObjReplace( p, pObj, pResult, fUpdateLevel );
 }
