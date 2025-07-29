@@ -1042,6 +1042,8 @@ Aig_Obj_t * Dar_LibBuildBest_rec( Dar_Man_t * p, Dar_LibObj_t * pObj, Vec_Ptr_t 
     );
     Vec_PtrPush(mutations, (void *)mut);
 
+    printf("creating %d(%d) from %d(%d) and %d(%d)\n", pData->pFunc->CertifId, pData->pFunc->Id, Aig_Regular(pFanin0)->CertifId, Aig_Regular(pFanin0)->Id, Aig_Regular(pFanin1)->CertifId, Aig_Regular(pFanin1)->Id);
+
 //    assert( pData->Level == (int)Aig_Regular(pData->pFunc)->Level );
     return pData->pFunc;
 }
