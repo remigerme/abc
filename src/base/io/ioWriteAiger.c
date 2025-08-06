@@ -621,6 +621,17 @@ int fprintfBz2Aig( bz2file * b, char * fmt, ... ) {
     }
 }
 
+
+//@ Cf. minimize_ids from the checker.
+void compute_aiger_ids(Abc_Ntk_t *pNtk, Vec_Int_t *aiger_ids, int initial) {
+    int i;
+    Abc_Obj_t *pNode;
+    Abc_AigForEachAnd(pNtk, pNode, i) {
+        Vec_IntSetEntry(aiger_ids, pNode->Id, initial++);
+    }
+}
+
+
 /**Function*************************************************************
 
   Synopsis    [Writes the AIG in the binary AIGER format.]
@@ -696,17 +707,25 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     }
 
     //@ Our mission starts here.
-    //@ We use the internal topological order of ABC AIGs because they are already correct.
-    //@ We basically don't have to modify ABC - just to make sure this pass is correctly replicated in the checker.
+    //@ To ensure we can replicate the exact AIG in the checker, we must get a topological order according to CertifId.
+    //@ This has been implemented in `Aig::minimize_ids` from mutaig. We need to do the same thing here.
 
     // set the node numbers to be used in the output file
     nNodes = 0;
     //@ constant node is indeed 0 (even though I thought Const1 was true)
     Io_ObjSetAigerNum( Abc_AigConst1(pNtk), nNodes++ );
+    //@ ids for inputs and latches have not changed
     Abc_NtkForEachCi( pNtk, pObj, i )
         Io_ObjSetAigerNum( pObj, nNodes++ );
+
+    //@ And gates need to be reindexed with proper indexes
+    Vec_Int_t *aiger_ids = Vec_IntStart(pNtk->nObjs);
+    compute_aiger_ids(pNtk, aiger_ids, nNodes);
+
     Abc_AigForEachAnd( pNtk, pObj, i )
-        Io_ObjSetAigerNum( pObj, nNodes++ );
+        Io_ObjSetAigerNum( pObj, Vec_IntEntry(aiger_ids, pObj->Id));
+
+    Vec_IntFree(aiger_ids);
 
     //@ At this point, our mission is done.
 
