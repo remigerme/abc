@@ -21,6 +21,7 @@
 
 // The code in this file is developed in collaboration with Mark Jarvin of Toronto.
 
+#define _GNU_SOURCE  // For qsort_r on Linux
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -650,8 +651,8 @@ int compare_certif_id_apple(Abc_Ntk_t *pNtk, int *i1, int *i2) { return compare_
 #define portable_qsort_r(base, nel, width, compare, thunk) qsort_r( \
     (void *)(base), \
     (size_t)(nel), \
-    (size_t)(width),
-    (int (*)(const void *, const void *, void *))(compare),
+    (size_t)(width), \
+    (int (*)(const void *, const void *, void *))(compare), \
     (void *)(thunk))
 #endif
 
