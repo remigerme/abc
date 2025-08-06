@@ -621,14 +621,118 @@ int fprintfBz2Aig( bz2file * b, char * fmt, ... ) {
     }
 }
 
+//@ Starting here.
+int compare_certif_id(int *i1, int *i2, Abc_Ntk_t *pNtk) {
+    assert (!Abc_ObjIsComplement((Abc_Obj_t *)Vec_PtrEntry(pNtk->vObjs, *i1)));
+    assert (!Abc_ObjIsComplement((Abc_Obj_t *)Vec_PtrEntry(pNtk->vObjs, *i2)));
+
+    unsigned c1 = ((Abc_Obj_t *)Vec_PtrEntry(pNtk->vObjs, *i1))->CertifId;
+    unsigned c2 = ((Abc_Obj_t *)Vec_PtrEntry(pNtk->vObjs, *i2))->CertifId;
+    if (c1 < c2)
+        return -1;
+    if (c1 > c2)
+        return 1;
+    return 0;
+}
+
+//@ qsort_r is not the same for apple
+#ifdef __APPLE__
+int compare_certif_id_apple(Abc_Ntk_t *pNtk, int *i1, int *i2) { return compare_certif_id(i1, i2, pNtk); }
+#define portable_compare_certif_id compare_certif_id_apple
+#define portable_qsort_r(base, nel, width, compare, thunk) qsort_r( \
+    (void *)(base), \
+    (size_t)(nel), \
+    (size_t)(width), \
+    (void *)(thunk), \
+    (int (*)(void *, const void *, const void *))(compare))
+#else
+#define portable_compare_certif_id compare_certif_id
+#define portable_qsort_r(base, nel, width, compare, thunk) qsort_r( \
+    (void *)(base), \
+    (size_t)(nel), \
+    (size_t)(width),
+    (int (*)(const void *, const void *, void *))(compare),
+    (void *)(thunk))
+#endif
+
+void sort_by_certif_id(Vec_Int_t *p, Abc_Ntk_t *pNtk) {
+    portable_qsort_r(p->pArray, p->nSize, sizeof(int), portable_compare_certif_id, pNtk);
+}
+
+void compute_aiger_ids_visit(Abc_Ntk_t *pNtk, Vec_Int_t *nodes_id, Vec_Int_t *seen, int start) {
+    int i, fanin;
+    Vec_Int_t *fanins = Vec_IntAlloc(2);
+
+    Vec_Int_t *stack = Vec_IntAlloc(50);
+    Vec_IntPush(stack, start);
+
+    while (Vec_IntSize(stack) > 0 ) {
+        assert(Vec_IntSize(fanins) == 0);
+        
+        int id = Vec_IntPop(stack);
+        Abc_Obj_t *obj = (Abc_Obj_t *)Vec_PtrEntry(pNtk->vObjs, id);
+
+        if (Vec_IntCountEntry(seen, id) >= 1)
+            continue;
+        Vec_IntPush(seen, id);
+
+        if (Vec_IntSize(&obj->vFanins) == 0 && (obj->Type == ABC_OBJ_CONST1 || obj->Type == ABC_OBJ_PI))
+            continue;
+
+        if (Vec_IntSize(&obj->vFanins) == 1 && obj->Type == ABC_OBJ_LATCH)
+            Vec_IntPush(fanins, Vec_IntEntry(&obj->vFanins, 0));
+        else if (Vec_IntSize(&obj->vFanins) == 2 && obj->Type == ABC_OBJ_NODE) {
+            Vec_IntPush(fanins, Vec_IntEntry(&obj->vFanins, 0));
+            Vec_IntPush(fanins, Vec_IntEntry(&obj->vFanins, 1));
+        }
+        else {
+            printf("unexpected fanins/type: fanins size : %d, id : %d, type: %d\n", Vec_IntSize(&obj->vFanins), id, obj->Type);
+            assert(0);
+        }
+        sort_by_certif_id(fanins, pNtk);
+
+        Vec_IntForEachEntry(fanins, fanin, i) {
+            if (Vec_IntCountEntry(seen, fanin) == 0)
+                Vec_IntPush(stack, fanin);
+        }
+
+        if (obj->Type == ABC_OBJ_NODE)
+            Vec_IntPush(nodes_id, id);
+        else if (obj->Type != ABC_OBJ_CONST1 && obj->Type != ABC_OBJ_PI && obj->Type != ABC_OBJ_LATCH) {
+            printf("considering %d of type %d (expected const1(1), pi(2), node(7), latch(8))\n", id, obj->Type);
+            assert(0);
+        }
+
+        Vec_IntClear(fanins);
+    }
+}
+
 
 //@ Cf. minimize_ids from the checker.
 void compute_aiger_ids(Abc_Ntk_t *pNtk, Vec_Int_t *aiger_ids, int initial) {
     int i;
     Abc_Obj_t *pNode;
-    Abc_AigForEachAnd(pNtk, pNode, i) {
-        Vec_IntSetEntry(aiger_ids, pNode->Id, initial++);
+
+    Vec_Int_t *nodes_id = Vec_IntStart(pNtk->nObjs);
+    Vec_Int_t *seen = Vec_IntAlloc(pNtk->nObjs);
+    Vec_Int_t *outputs_to_visit = Vec_IntAlloc(40);
+    Abc_NtkForEachPo(pNtk, pNode, i) {
+        assert(Vec_IntSize(&pNode->vFanins) == 1);
+        int fanin_id = Vec_IntEntry(&pNode->vFanins, 0);
+        assert(fanin_id == ((Abc_Obj_t *)Vec_PtrEntry(pNtk->vObjs, fanin_id))->Id);
+        Vec_IntPush(outputs_to_visit, fanin_id);
     }
+    sort_by_certif_id(outputs_to_visit, pNtk);
+
+    while (Vec_IntSize(outputs_to_visit) > 0)
+        compute_aiger_ids_visit(pNtk, nodes_id, seen, Vec_IntPop(outputs_to_visit));
+    Vec_IntReverseOrder(nodes_id);
+
+    int node_id;
+    Vec_IntForEachEntry(nodes_id, node_id, i)
+        Vec_IntSetEntry(aiger_ids, node_id, initial + i);
+
+    Vec_IntFree(nodes_id);
 }
 
 
