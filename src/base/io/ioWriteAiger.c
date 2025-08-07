@@ -665,17 +665,30 @@ void compute_aiger_ids_visit(Abc_Ntk_t *pNtk, Vec_Int_t *nodes_id, Vec_Int_t *se
     Vec_Int_t *fanins = Vec_IntAlloc(2);
 
     Vec_Int_t *stack = Vec_IntAlloc(50);
+    Vec_Bit_t *stack_last_time = Vec_BitAlloc(50);
     Vec_IntPush(stack, start);
+    Vec_BitPush(stack_last_time, 0);
 
     while (Vec_IntSize(stack) > 0 ) {
         assert(Vec_IntSize(fanins) == 0);
+        assert(Vec_IntSize(stack) == Vec_BitSize(stack_last_time));
         
         int id = Vec_IntPop(stack);
         Abc_Obj_t *obj = (Abc_Obj_t *)Vec_PtrEntry(pNtk->vObjs, id);
+        int last_time = Vec_BitPop(stack_last_time);
+
+        //@ Post order check
+        if (last_time) {
+            Vec_IntPush(seen, id);
+            if (obj->Type == ABC_OBJ_NODE)
+                Vec_IntPush(nodes_id, id);
+            continue;
+        }
 
         if (Vec_IntCountEntry(seen, id) >= 1)
             continue;
-        Vec_IntPush(seen, id);
+        Vec_IntPush(stack, id);
+        Vec_BitPush(stack_last_time, 1);
 
         if (Vec_IntSize(&obj->vFanins) == 0 && (obj->Type == ABC_OBJ_CONST1 || obj->Type == ABC_OBJ_PI))
             continue;
@@ -693,15 +706,10 @@ void compute_aiger_ids_visit(Abc_Ntk_t *pNtk, Vec_Int_t *nodes_id, Vec_Int_t *se
         sort_by_certif_id(fanins, pNtk);
 
         Vec_IntForEachEntry(fanins, fanin, i) {
-            if (Vec_IntCountEntry(seen, fanin) == 0)
+            if (Vec_IntCountEntry(seen, fanin) == 0) {
                 Vec_IntPush(stack, fanin);
-        }
-
-        if (obj->Type == ABC_OBJ_NODE)
-            Vec_IntPush(nodes_id, id);
-        else if (obj->Type != ABC_OBJ_CONST1 && obj->Type != ABC_OBJ_PI && obj->Type != ABC_OBJ_LATCH) {
-            printf("considering %d of type %d (expected const1(1), pi(2), node(7), latch(8))\n", id, obj->Type);
-            assert(0);
+                Vec_BitPush(stack_last_time, 0);
+            }
         }
 
         Vec_IntClear(fanins);
@@ -727,7 +735,6 @@ void compute_aiger_ids(Abc_Ntk_t *pNtk, Vec_Int_t *aiger_ids, int initial) {
 
     while (Vec_IntSize(outputs_to_visit) > 0)
         compute_aiger_ids_visit(pNtk, nodes_id, seen, Vec_IntPop(outputs_to_visit));
-    Vec_IntReverseOrder(nodes_id);
 
     int node_id;
     Vec_IntForEachEntry(nodes_id, node_id, i)
