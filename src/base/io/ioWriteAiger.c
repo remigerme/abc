@@ -718,11 +718,11 @@ void compute_aiger_ids_visit(Abc_Ntk_t *pNtk, Vec_Int_t *nodes_id, Vec_Int_t *se
 
 
 //@ Cf. minimize_ids from the checker.
-void compute_aiger_ids(Abc_Ntk_t *pNtk, Vec_Int_t *aiger_ids, int initial) {
+void compute_aiger_ids(Abc_Ntk_t *pNtk, Vec_Int_t *aiger_ids, Vec_Int_t *aiger_ids_inv, int initial, int *max_id_and) {
     int i;
     Abc_Obj_t *pNode;
 
-    Vec_Int_t *nodes_id = Vec_IntStart(pNtk->nObjs);
+    Vec_Int_t *nodes_id = Vec_IntAlloc(pNtk->nObjs);
     Vec_Int_t *seen = Vec_IntAlloc(pNtk->nObjs);
     Vec_Int_t *outputs_to_visit = Vec_IntAlloc(40);
     Abc_NtkForEachPo(pNtk, pNode, i) {
@@ -737,10 +737,15 @@ void compute_aiger_ids(Abc_Ntk_t *pNtk, Vec_Int_t *aiger_ids, int initial) {
         compute_aiger_ids_visit(pNtk, nodes_id, seen, Vec_IntPop(outputs_to_visit));
 
     int node_id;
-    Vec_IntForEachEntry(nodes_id, node_id, i)
+    Vec_IntForEachEntry(nodes_id, node_id, i) {
         Vec_IntSetEntry(aiger_ids, node_id, initial + i);
+        Vec_IntSetEntry(aiger_ids_inv, initial + i, node_id);
+    }
+    *max_id_and = initial + i - 1;
 
     Vec_IntFree(nodes_id);
+    Vec_IntFree(seen);
+    Vec_IntFree(outputs_to_visit);
 }
 
 
@@ -832,14 +837,18 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
 
     //@ And gates need to be reindexed with proper indexes
     Vec_Int_t *aiger_ids = Vec_IntStart(pNtk->nObjs);
-    compute_aiger_ids(pNtk, aiger_ids, nNodes);
+    Vec_Int_t *aiger_ids_inv = Vec_IntStart(pNtk->nObjs);
+    int min_id_and = nNodes;
+    int max_id_and;
+    compute_aiger_ids(pNtk, aiger_ids, aiger_ids_inv, nNodes, &max_id_and);
 
     Abc_AigForEachAnd( pNtk, pObj, i )
         Io_ObjSetAigerNum( pObj, Vec_IntEntry(aiger_ids, pObj->Id));
 
-    Vec_IntFree(aiger_ids);
-
-    //@ At this point, our mission is done.
+    //@ Note that we associated indexes to AND gates... but!
+    //@ We still need to reorder them according to these indexes
+    //@ because they are declared (implicitly with these indexes)
+    //@ in the AIGER binary format.
 
     // write the header "M I L O A" where M = I + L + A
     fprintfBz2Aig( &b, "aig%s %u %u %u %u %u", 
@@ -913,9 +922,12 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     nBufferSize = 6 * Abc_NtkNodeNum(pNtk) + 100; // skeptically assuming 3 chars per one AIG edge
     pBuffer = ABC_ALLOC( unsigned char, nBufferSize );
     pProgress = Extra_ProgressBarStart( stdout, Abc_NtkObjNumMax(pNtk) );
-    Abc_AigForEachAnd( pNtk, pObj, i )
-    {
-        Extra_ProgressBarUpdate( pProgress, i, NULL );
+
+    for (i = min_id_and; i <= max_id_and; ++i) {
+        int id = Vec_IntEntry(aiger_ids_inv, i);
+        pObj = (Abc_Obj_t *)Vec_PtrEntry(pNtk->vObjs, id);
+
+        // Extra_ProgressBarUpdate( pProgress, i, NULL );
         uLit  = Io_ObjMakeLit( Io_ObjAigerNum(pObj), 0 );
         uLit0 = Io_ObjMakeLit( Io_ObjAigerNum(Abc_ObjFanin0(pObj)), Abc_ObjFaninC0(pObj) );
         uLit1 = Io_ObjMakeLit( Io_ObjAigerNum(Abc_ObjFanin1(pObj)), Abc_ObjFaninC1(pObj) );
@@ -939,6 +951,10 @@ void Io_WriteAiger( Abc_Ntk_t * pNtk, char * pFileName, int fWriteSymbols, int f
     }
     assert( Pos < nBufferSize );
     Extra_ProgressBarStop( pProgress );
+
+    //@ Free time.
+    Vec_IntFree(aiger_ids);
+    Vec_IntFree(aiger_ids_inv);
 
     // write the buffer
     if ( !b.b )
