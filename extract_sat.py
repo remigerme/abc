@@ -105,7 +105,7 @@ def main():
 
         # Traiter les fichiers EPFL et écrire les résultats individuels
         avg_df_epfl, avg_time_epfl = process_directory(
-            epfl_dir, csv_writer, write_individual_results=False
+            epfl_dir, csv_writer, write_individual_results=True
         )
 
         # Traiter les fichiers BEEM sans écrire les résultats individuels
@@ -113,7 +113,7 @@ def main():
             beem_dir, csv_writer, write_individual_results=False
         )
 
-        _ = process_directory(cpu_dir, csv_writer, write_individual_results=True)
+        # _ = process_directory(cpu_dir, csv_writer, write_individual_results=True)
 
         # Écrire les moyennes
         csv_writer.writerow(
