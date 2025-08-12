@@ -1563,6 +1563,15 @@ Abc_Ntk_t * Abc_NtkDRewrite( Abc_Ntk_t * pNtk, Dar_RwrPar_t * pPars )
     Aig_Man_t * pMan, * pTemp;
     Abc_Ntk_t * pNtkAig;
     abctime clk;
+
+
+    char fileName[1000];
+    // EPFL
+    //int shift = 12;
+    // BEEM
+    int shift = 14;
+    sprintf(fileName, "../BEEMres%s.certif", &pNtk->pName[shift]);
+
     assert( Abc_NtkIsStrash(pNtk) );
     pMan = Abc_NtkToDar( pNtk, 0, 0 );
     if ( pMan == NULL )
@@ -1602,7 +1611,7 @@ clk = Abc_Clock();
     //     printf("ad=%d ", pObj_->CertifId);
     // }
 
-    FILE *fp = fopen("drw.certif", "wb");
+    FILE *fp = fopen(fileName, "wb");
     write_certificates(certificates, fp);
     fclose(fp);
 
