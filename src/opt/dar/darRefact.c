@@ -332,16 +332,20 @@ Aig_Obj_t * Dar_RefactBuildGraph( Aig_Man_t * pAig, Vec_Ptr_t * vCut, Kit_Graph_
         pAnd1 = Aig_NotCond( (Aig_Obj_t *)Kit_GraphNode(pGraph, pNode->eEdge1.Node)->pFunc, pNode->eEdge1.fCompl ); 
         pNode->pFunc = Aig_And( pAig, pAnd0, pAnd1 );
         
-        //@ Emitting a certificate here.
-        ((Aig_Obj_t *)pNode->pFunc)->CertifId = fresh_certif_id(certif_man);
-        Mutation_t *mut = new_mutation_create(
-            ((Aig_Obj_t *)pNode->pFunc)->CertifId,
-            Aig_Regular(pAnd0)->CertifId,
-            Aig_IsComplement(pAnd0),
-            Aig_Regular(pAnd1)->CertifId,
-            Aig_IsComplement(pAnd1)
-        );
-        Vec_PtrPush(mutations, (void *)mut);
+        //@ Emitting a certificate here if the node is new.
+        //@ We assign a new CertifId only if the node was created and do not have one.
+        //@ When reusing node (strashing), we don't want to overwrite that.
+        if (((Aig_Obj_t *)pNode->pFunc)->CertifId == 0) {
+            ((Aig_Obj_t *)pNode->pFunc)->CertifId = fresh_certif_id(certif_man);
+            Mutation_t *mut = new_mutation_create(
+                ((Aig_Obj_t *)pNode->pFunc)->CertifId,
+                Aig_Regular(pAnd0)->CertifId,
+                Aig_IsComplement(pAnd0),
+                Aig_Regular(pAnd1)->CertifId,
+                Aig_IsComplement(pAnd1)
+            );
+            Vec_PtrPush(mutations, (void *)mut);
+        }
     }
     // complement the result if necessary
     return Aig_NotCond( (Aig_Obj_t *)pNode->pFunc, Kit_GraphIsComplement(pGraph) );
