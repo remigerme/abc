@@ -356,7 +356,6 @@ p->timeCuts += Abc_Clock() - clk;
                 pObjNew = Aig_NotCond( Aig_ManObj(p->pAig, pCut->pLeaves[0]), pCut->uTruth==0x5555 );
             }
             //@ Saving mutation.
-            //@ TODO : IS COMPLEMENT CORRECT FOR CONSTANT NODE ?
             int old_id = pObj->CertifId;
             int new_id = Aig_Regular(pObjNew)->CertifId;
             int complement = Aig_IsComplement(pObjNew);
