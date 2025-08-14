@@ -253,7 +253,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     pParsRef->fVerbose = 0;//fVerbose;
 
     //@ Allocating certificates
-    Vec_Ptr_t *certificates = Vec_PtrAlloc(6);
+    Vec_Ptr_t *certificates = Vec_PtrAlloc(9);
 
     //@ Checking certificate ids were properly initialized (required but not sufficient condition).
     check_certif_id(pAig);
@@ -288,7 +288,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     if ( fVerbose ) printf( "Rewrite:   " ), Aig_ManPrintStats( pAig );
     
     // refactor
-    Dar_ManRefactor( pAig, pParsRef );
+    Dar_ManRefactorCertificates( pAig, pParsRef, certificates );
     pAig = Aig_ManDupDfs( pTemp = pAig ); 
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "Refactor:  " ), Aig_ManPrintStats( pAig );
@@ -325,7 +325,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     }
     
     // refactor
-    Dar_ManRefactor( pAig, pParsRef );
+    Dar_ManRefactorCertificates( pAig, pParsRef, certificates );
     pAig = Aig_ManDupDfs( pTemp = pAig ); 
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "RefactorZ: " ), Aig_ManPrintStats( pAig );
