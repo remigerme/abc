@@ -310,7 +310,7 @@ printf( "\n" );
   SeeAlso     []
 
 ***********************************************************************/
-Aig_Obj_t * Dar_RefactBuildGraph( Aig_Man_t * pAig, Vec_Ptr_t * vCut, Kit_Graph_t * pGraph )
+Aig_Obj_t * Dar_RefactBuildGraph( Aig_Man_t * pAig, Vec_Ptr_t * vCut, Kit_Graph_t * pGraph, Vec_Ptr_t * mutations, CertifIdMan_t * certif_man )
 {
     Aig_Obj_t * pAnd0, * pAnd1;
     Kit_Node_t * pNode = NULL;
@@ -331,6 +331,17 @@ Aig_Obj_t * Dar_RefactBuildGraph( Aig_Man_t * pAig, Vec_Ptr_t * vCut, Kit_Graph_
         pAnd0 = Aig_NotCond( (Aig_Obj_t *)Kit_GraphNode(pGraph, pNode->eEdge0.Node)->pFunc, pNode->eEdge0.fCompl ); 
         pAnd1 = Aig_NotCond( (Aig_Obj_t *)Kit_GraphNode(pGraph, pNode->eEdge1.Node)->pFunc, pNode->eEdge1.fCompl ); 
         pNode->pFunc = Aig_And( pAig, pAnd0, pAnd1 );
+        
+        //@ Emitting a certificate here.
+        ((Aig_Obj_t *)pNode->pFunc)->CertifId = fresh_certif_id(certif_man);
+        Mutation_t *mut = new_mutation_create(
+            ((Aig_Obj_t *)pNode->pFunc)->CertifId,
+            Aig_Regular(pAnd0)->CertifId,
+            Aig_IsComplement(pAnd0),
+            Aig_Regular(pAnd1)->CertifId,
+            Aig_IsComplement(pAnd1)
+        );
+        Vec_PtrPush(mutations, (void *)mut);
     }
     // complement the result if necessary
     return Aig_NotCond( (Aig_Obj_t *)pNode->pFunc, Kit_GraphIsComplement(pGraph) );
@@ -510,6 +521,9 @@ int Dar_ManRefactor( Aig_Man_t * pAig, Dar_RefPar_t * pPars )
     p->nNodesInit = Aig_ManNodeNum(pAig);
     nNodesOld = Vec_PtrSize( pAig->vObjs );
 //    pProgress = Bar_ProgressStart( stdout, nNodesOld );
+    //@ useless certif id manager (needed by refactbuildgraph)
+    CertifIdMan_t *certif_man = new_certif_id_man(pAig);
+    Vec_Ptr_t *mutations = Vec_PtrAlloc(1);
     Aig_ManForEachObj( pAig, pObj, i )
     {
 //        Bar_ProgressUpdate( pProgress, i, NULL );
@@ -576,7 +590,7 @@ p->timeEval += Abc_Clock() - clk;
 
         // if we end up here, a rewriting step is accepted
         nNodeBefore = Aig_ManNodeNum( pAig );
-        pObjNew = Dar_RefactBuildGraph( pAig, p->vLeavesBest, p->pGraphBest );
+        pObjNew = Dar_RefactBuildGraph( pAig, p->vLeavesBest, p->pGraphBest, mutations, certif_man);
         //assert( (int)Aig_Regular(pObjNew)->Level <= Required );
         // replace the node
         Aig_ObjReplace( pAig, pObj, pObjNew, p->pPars->fUpdateLevel );
@@ -717,26 +731,26 @@ p->timeEval += Abc_Clock() - clk;
 
         // if we end up here, a rewriting step is accepted
         nNodeBefore = Aig_ManNodeNum( pAig );
-        pObjNew = Dar_RefactBuildGraph( pAig, p->vLeavesBest, p->pGraphBest );
+        pObjNew = Dar_RefactBuildGraph( pAig, p->vLeavesBest, p->pGraphBest, mutations, certif_man);
 
         //@ Emitting the certificates here:
         //@ - a `replace_node` mutation
         //@ - a hint associated with the refactor.
         int old_id = Aig_Regular(pObj)->CertifId;
         int new_id = Aig_Regular(pObjNew)->CertifId;
-        int compl = Aig_IsComplement(pObjNew);
+        int complement = Aig_IsComplement(pObjNew);
 
         Mutation_t *mut = new_mutation_replace(
             old_id,
             new_id,
-            compl
+            complement
         );
         Vec_PtrPush(mutations, (void *)mut);
 
         Hint_t *hint = new_hint(
             old_id,
             new_id,
-            compl
+            complement
         );
         Vec_PtrPush(hints, (void *)hint);
 
