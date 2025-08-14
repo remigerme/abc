@@ -296,7 +296,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     // balance
 //    if ( fBalance )
     {
-    pAig = Dar_ManBalance( pTemp = pAig, fUpdateLevel );
+    pAig = Dar_ManBalanceCertificates( pTemp = pAig, fUpdateLevel, certificates );
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "Balance:   " ), Aig_ManPrintStats( pAig );
     }
@@ -319,7 +319,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     // balance
     if ( fBalance )
     {
-    pAig = Dar_ManBalance( pTemp = pAig, fUpdateLevel );
+    pAig = Dar_ManBalanceCertificates( pTemp = pAig, fUpdateLevel, certificates);
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "Balance:   " ), Aig_ManPrintStats( pAig );
     }
@@ -339,7 +339,7 @@ Aig_Man_t * Dar_ManCompress2( Aig_Man_t * pAig, int fBalance, int fUpdateLevel, 
     // balance
     if ( fBalance )
     {
-    pAig = Dar_ManBalance( pTemp = pAig, fUpdateLevel );
+    pAig = Dar_ManBalanceCertificates( pTemp = pAig, fUpdateLevel, certificates );
     Aig_ManStop( pTemp );
     if ( fVerbose ) printf( "Balance:   " ), Aig_ManPrintStats( pAig );
     }

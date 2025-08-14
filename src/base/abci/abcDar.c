@@ -1570,7 +1570,8 @@ Abc_Ntk_t * Abc_NtkDRewrite( Abc_Ntk_t * pNtk, Dar_RwrPar_t * pPars )
     //int shift = 12;
     // BEEM
     int shift = 14;
-    sprintf(fileName, "../BEEMres%s.drw.certif", &pNtk->pName[shift]);
+    // sprintf(fileName, "../BEEMres%s.drw.certif", &pNtk->pName[shift]);
+    sprintf(fileName, "drw.certif");
 
     assert( Abc_NtkIsStrash(pNtk) );
     pMan = Abc_NtkToDar( pNtk, 0, 0 );
@@ -1640,7 +1641,8 @@ Abc_Ntk_t * Abc_NtkDRefactor( Abc_Ntk_t * pNtk, Dar_RefPar_t * pPars )
     //int shift = 12;
     // BEEM
     int shift = 14;
-    sprintf(fileName, "../BEEMres%s.drf.certif", &pNtk->pName[shift]);
+    // sprintf(fileName, "../BEEMres%s.drf.certif", &pNtk->pName[shift]);
+    sprintf(fileName, "drf.certif");
 
     assert( Abc_NtkIsStrash(pNtk) );
     pMan = Abc_NtkToDar( pNtk, 0, 0 );
@@ -4140,6 +4142,15 @@ Abc_Ntk_t * Abc_NtkBalanceExor( Abc_Ntk_t * pNtk, int fUpdateLevel, int fVerbose
     extern void Dar_BalancePrintStats( Aig_Man_t * p );
     Abc_Ntk_t * pNtkAig;
     Aig_Man_t * pMan, * pTemp;//, * pTemp2;
+
+    char fileName[1000];
+    // EPFL
+    //int shift = 12;
+    // BEEM
+    int shift = 14;
+    // sprintf(fileName, "../BEEMres%s.drf.certif", &pNtk->pName[shift]);
+    sprintf(fileName, "b.certif");
+
     assert( Abc_NtkIsStrash(pNtk) );
     // derive AIG with EXORs
     pMan = Abc_NtkToDar( pNtk, 1, 0 );
@@ -4149,12 +4160,18 @@ Abc_Ntk_t * Abc_NtkBalanceExor( Abc_Ntk_t * pNtk, int fUpdateLevel, int fVerbose
     if ( fVerbose )
         Dar_BalancePrintStats( pMan );
     // perform balancing
-    pTemp = Dar_ManBalance( pMan, fUpdateLevel );
+    Vec_Ptr_t *certificates = Vec_PtrAlloc(1);
+    pTemp = Dar_ManBalanceCertificates( pMan, fUpdateLevel, certificates);
 //    Aig_ManPrintStats( pTemp );
     // create logic network
     pNtkAig = Abc_NtkFromDar( pNtk, pTemp );
     Aig_ManStop( pTemp );
     Aig_ManStop( pMan );
+
+    FILE *fp = fopen(fileName, "wb");
+    write_certificates(certificates, fp);
+    fclose(fp);
+
     return pNtkAig;
 }
 

@@ -87,6 +87,7 @@ extern void            Dar_LibPrepare( int nSubgraphs );
 extern int             Dar_LibReturnClass( unsigned uTruth );
 /*=== darBalance.c ========================================================*/
 extern Aig_Man_t *     Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel );
+extern Aig_Man_t *     Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr_t * certificates );
 extern Aig_Man_t *     Dar_ManBalanceXor( Aig_Man_t * pAig, int fExor, int fUpdateLevel, int fVerbose );
 extern void            Dar_BalancePrintStats( Aig_Man_t * p );
 /*=== darCore.c ========================================================*/

@@ -673,6 +673,129 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
     return pNew;
 }
 
+
+Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr_t * certificates )
+{
+    Aig_Man_t * pNew;
+    Aig_Obj_t * pObj, * pDriver, * pObjNew;
+    Vec_Vec_t * vStore;
+    int i;
+    assert( Aig_ManVerifyTopoOrder(p) );
+    // create the new manager 
+    pNew = Aig_ManStart( Aig_ManObjNumMax(p) );
+    pNew->pName = Abc_UtilStrsav( p->pName );
+    pNew->pSpec = Abc_UtilStrsav( p->pSpec );
+    pNew->nAsserts = p->nAsserts;
+    pNew->nConstrs = p->nConstrs;
+    pNew->nBarBufs = p->nBarBufs;
+    pNew->Time2Quit = p->Time2Quit;
+    if ( p->vFlopNums )
+        pNew->vFlopNums = Vec_IntDup( p->vFlopNums );
+    // map the PI nodes
+    Aig_ManCleanData( p );
+    Aig_ManConst1(p)->pData = Aig_ManConst1(pNew);
+    vStore = Vec_VecAlloc( 50 );
+    if ( p->pManTime != NULL )
+    {
+        float arrTime;
+        Tim_ManIncrementTravId( (Tim_Man_t *)p->pManTime );
+        Aig_ManSetCioIds( p );
+        Aig_ManForEachObj( p, pObj, i )
+        {
+            if ( Aig_ObjIsNode(pObj) || Aig_ObjIsConst1(pObj) )
+                continue;
+            if ( Aig_ObjIsCi(pObj) )
+            {
+                // copy the PI
+                pObjNew = Aig_ObjCreateCi(pNew); 
+                pObj->pData = pObjNew;
+                // set the arrival time of the new PI
+                arrTime = Tim_ManGetCiArrival( (Tim_Man_t *)p->pManTime, Aig_ObjCioId(pObj) );
+                pObjNew->Level = (int)arrTime;
+            }
+            else if ( Aig_ObjIsCo(pObj) )
+            {
+                // perform balancing
+                pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                if ( pObjNew == NULL )
+                {
+                    Vec_VecFree( vStore );
+                    Aig_ManStop( pNew );
+                    return NULL;
+                }
+                pObjNew = Aig_NotCond( pObjNew, Aig_IsComplement(pDriver) );
+                // save arrival time of the output
+                arrTime = (float)Aig_Regular(pObjNew)->Level;
+                Tim_ManSetCoArrival( (Tim_Man_t *)p->pManTime, Aig_ObjCioId(pObj), arrTime );
+                // create PO
+                pObjNew = Aig_ObjCreateCo( pNew, pObjNew );
+            }
+            else
+                assert( 0 );
+        }
+        Aig_ManCleanCioIds( p );
+        pNew->pManTime = Tim_ManDup( (Tim_Man_t *)p->pManTime, 0 );
+    }
+    else
+    {
+        Aig_ManForEachCi( p, pObj, i )
+        {
+            pObjNew = Aig_ObjCreateCi(pNew); 
+            pObjNew->Level = pObj->Level;
+            pObj->pData = pObjNew;
+        }
+        if ( p->nBarBufs == 0 )
+        {
+            Aig_ManForEachCo( p, pObj, i )
+            {
+                pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                if ( pObjNew == NULL )
+                {
+                    Vec_VecFree( vStore );
+                    Aig_ManStop( pNew );
+                    return NULL;
+                }
+                pObjNew = Aig_NotCond( pObjNew, Aig_IsComplement(pDriver) );
+                pObjNew = Aig_ObjCreateCo( pNew, pObjNew );
+            }
+        }
+        else
+        {
+            Vec_Ptr_t * vLits = Vec_PtrStart( Aig_ManCoNum(p) );
+            Aig_ManForEachCo( p, pObj, i )
+            {
+                int k = i < p->nBarBufs ? Aig_ManCoNum(p) - p->nBarBufs + i : i - p->nBarBufs;
+                pObj = Aig_ManCo( p, k );
+                pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                if ( pObjNew == NULL )
+                {
+                    Vec_VecFree( vStore );
+                    Aig_ManStop( pNew );
+                    return NULL;
+                }
+                pObjNew = Aig_NotCond( pObjNew, Aig_IsComplement(pDriver) );
+                Vec_PtrWriteEntry( vLits, k, pObjNew );
+                if ( i < p->nBarBufs )
+                    Aig_ManCi(pNew, Aig_ManCiNum(p) - p->nBarBufs + i)->Level = Aig_Regular(pObjNew)->Level;
+            }
+            Aig_ManForEachCo( p, pObj, i )
+                Aig_ObjCreateCo( pNew, (Aig_Obj_t *)Vec_PtrEntry(vLits, i) );
+            Vec_PtrFree(vLits);
+        }
+    }
+    Vec_VecFree( vStore );
+    // remove dangling nodes
+    Aig_ManCleanup( pNew );
+    Aig_ManSetRegNum( pNew, Aig_ManRegNum(p) );
+    // check the resulting AIG
+    if ( !Aig_ManCheck(pNew) )
+        printf( "Dar_ManBalance(): The check has failed.\n" );
+    return pNew;
+}
+
 /**Function*************************************************************
 
   Synopsis    [Reproduces script "compress2".]
