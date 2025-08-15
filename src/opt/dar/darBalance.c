@@ -501,6 +501,8 @@ Aig_Obj_t * Dar_BalanceBuildSuperTop( Aig_Man_t * p, Vec_Ptr_t * vSuper, Aig_Typ
 ***********************************************************************/
 Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * vStore, int Level, int fUpdateLevel )
 {
+    //@ TODO HERE
+    //@ Set CertifId and emit mutations and hints.
     Aig_Obj_t * pObjNew;
     Vec_Ptr_t * vSuper;
     int i;
@@ -695,6 +697,12 @@ Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr
     Aig_ManCleanData( p );
     Aig_ManConst1(p)->pData = Aig_ManConst1(pNew);
     vStore = Vec_VecAlloc( 50 );
+
+    //@ Creating vectors for the certificate.
+    Vec_Ptr_t *mutations = Vec_PtrAlloc(500);
+    Vec_Ptr_t *hints = Vec_PtrAlloc(50);
+    CertifIdMan_t *certif_man = new_certif_id_man(p); //@ TODO: BE CAREFUL ON THIS ONE
+
     if ( p->pManTime != NULL )
     {
         float arrTime;
@@ -743,6 +751,7 @@ Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr
         {
             pObjNew = Aig_ObjCreateCi(pNew); 
             pObjNew->Level = pObj->Level;
+            pObjNew->CertifId = pObj->CertifId; //@ setting CertifId
             pObj->pData = pObjNew;
         }
         if ( p->nBarBufs == 0 )
@@ -758,11 +767,20 @@ Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr
                     return NULL;
                 }
                 pObjNew = Aig_NotCond( pObjNew, Aig_IsComplement(pDriver) );
+
+                int old_id = Aig_Regular(pDriver)->CertifId;
+                int new_id = Aig_Regular(pObjNew)->CertifId;
+                Mutation_t *mut = new_mutation_replace(old_id, new_id, 0);
+                Hint_t *hint = new_hint(old_id, new_id, 0);
+                Vec_PtrPush(mutations, (void *)mut);
+                Vec_PtrPush(hints, (void *)hint);
+
                 pObjNew = Aig_ObjCreateCo( pNew, pObjNew );
             }
         }
         else
         {
+            assert("BarBufs not supported" && 0);
             Vec_Ptr_t * vLits = Vec_PtrStart( Aig_ManCoNum(p) );
             Aig_ManForEachCo( p, pObj, i )
             {
@@ -793,6 +811,11 @@ Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr
     // check the resulting AIG
     if ( !Aig_ManCheck(pNew) )
         printf( "Dar_ManBalance(): The check has failed.\n" );
+
+    //@ Registering certificate associated with this balance pass.
+    Certificate_t *certif = new_certificate(mutations, hints);
+    Vec_PtrPush(certificates, (void *) certif);
+
     return pNew;
 }
 
