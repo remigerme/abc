@@ -499,8 +499,10 @@ Aig_Obj_t * Dar_BalanceBuildSuperTop( Aig_Man_t * p, Vec_Ptr_t * vSuper, Aig_Typ
   SeeAlso     []
 
 ***********************************************************************/
-Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * vStore, int Level, int fUpdateLevel )
+Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * vStore, int Level, int fUpdateLevel, Vec_Ptr_t * mutations, Vec_Ptr_t * hints)
 {
+    //@ Here we need to set CertifId and emit mutations and hints.
+    //@ The caller is responsible for emitting certificates for pObjOld replace.
     Aig_Obj_t * pObjNew;
     Vec_Ptr_t * vSuper;
     int i;
@@ -513,12 +515,19 @@ Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * 
     // get the implication supergate
     vSuper = Dar_BalanceCone( pObjOld, vStore, Level );
     // check if supergate contains two nodes in the opposite polarity
-    if ( vSuper->nSize == 0 )
-        return (Aig_Obj_t *)(pObjOld->pData = Aig_ManConst0(pNew));
+    if ( vSuper->nSize == 0 ) {
+        pObjOld->pData = Aig_ManConst0(pNew);
+        ((Aig_Obj_t *)pObjOld->pData)->CertifId = 0;
+        //@ Not emitting certificate here because it's the caller's responsibility.
+        return (Aig_Obj_t *)pObjOld->pData;
+        //@ Previously:
+        //@ return (Aig_Obj_t *)(pObjOld->pData = Aig_ManConst0(pNew));
+    }
     // for each old node, derive the new well-balanced node
     for ( i = 0; i < Vec_PtrSize(vSuper); i++ )
     {
-        pObjNew = Dar_Balance_rec( pNew, Aig_Regular((Aig_Obj_t *)vSuper->pArray[i]), vStore, Level + 1, fUpdateLevel );
+        //@ TODO HERE WE MUST EMIT SOMETHING.
+        pObjNew = Dar_Balance_rec( pNew, Aig_Regular((Aig_Obj_t *)vSuper->pArray[i]), vStore, Level + 1, fUpdateLevel, mutations, hints );
         if ( pObjNew == NULL )
             return NULL;
         vSuper->pArray[i] = Aig_NotCond( pObjNew, Aig_IsComplement((Aig_Obj_t *)vSuper->pArray[i]) );
@@ -528,8 +537,10 @@ Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * 
         return (Aig_Obj_t *)Vec_PtrEntry(vSuper, 0);
     // build the supergate
 #ifdef USE_LUTSIZE_BALANCE
+    assert(0 && "lutsize_balance not supported");
     pObjNew = Dar_BalanceBuildSuperTop( pNew, vSuper, Aig_ObjType(pObjOld), fUpdateLevel, 6 );
 #else
+    //@ TODO INVESTIGATE FOR CERTIFICATES HERE.
     pObjNew = Dar_BalanceBuildSuper( pNew, vSuper, Aig_ObjType(pObjOld), fUpdateLevel );
 #endif
     if ( pNew->Time2Quit && !(Aig_Regular(pObjNew)->Id & 255) && Abc_Clock() > pNew->Time2Quit )
@@ -572,6 +583,9 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
     Aig_ManCleanData( p );
     Aig_ManConst1(p)->pData = Aig_ManConst1(pNew);
     vStore = Vec_VecAlloc( 50 );
+    //@ dummy
+    Vec_Ptr_t *mutations = Vec_PtrAlloc(1);
+    Vec_Ptr_t *hints = Vec_PtrAlloc(1);
     if ( p->pManTime != NULL )
     {
         float arrTime;
@@ -594,7 +608,7 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
             {
                 // perform balancing
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
@@ -627,7 +641,7 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
             Aig_ManForEachCo( p, pObj, i )
             {
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
@@ -646,7 +660,7 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
                 int k = i < p->nBarBufs ? Aig_ManCoNum(p) - p->nBarBufs + i : i - p->nBarBufs;
                 pObj = Aig_ManCo( p, k );
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints);
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
@@ -670,6 +684,151 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
     // check the resulting AIG
     if ( !Aig_ManCheck(pNew) )
         printf( "Dar_ManBalance(): The check has failed.\n" );
+    return pNew;
+}
+
+
+Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr_t * certificates )
+{
+    Aig_Man_t * pNew;
+    Aig_Obj_t * pObj, * pDriver, * pObjNew;
+    Vec_Vec_t * vStore;
+    int i;
+    assert( Aig_ManVerifyTopoOrder(p) );
+    // create the new manager 
+    pNew = Aig_ManStart( Aig_ManObjNumMax(p) );
+    pNew->pName = Abc_UtilStrsav( p->pName );
+    pNew->pSpec = Abc_UtilStrsav( p->pSpec );
+    pNew->nAsserts = p->nAsserts;
+    pNew->nConstrs = p->nConstrs;
+    pNew->nBarBufs = p->nBarBufs;
+    pNew->Time2Quit = p->Time2Quit;
+    if ( p->vFlopNums )
+        pNew->vFlopNums = Vec_IntDup( p->vFlopNums );
+    // map the PI nodes
+    Aig_ManCleanData( p );
+    Aig_ManConst1(p)->pData = Aig_ManConst1(pNew);
+    vStore = Vec_VecAlloc( 50 );
+
+    //@ Creating vectors for the certificate.
+    Vec_Ptr_t *mutations = Vec_PtrAlloc(500);
+    Vec_Ptr_t *hints = Vec_PtrAlloc(50);
+    CertifIdMan_t *certif_man = new_certif_id_man(p); //@ TODO: BE CAREFUL ON THIS ONE
+
+    if ( p->pManTime != NULL )
+    {
+        assert(0 && "pManTime not supported");
+        float arrTime;
+        Tim_ManIncrementTravId( (Tim_Man_t *)p->pManTime );
+        Aig_ManSetCioIds( p );
+        Aig_ManForEachObj( p, pObj, i )
+        {
+            if ( Aig_ObjIsNode(pObj) || Aig_ObjIsConst1(pObj) )
+                continue;
+            if ( Aig_ObjIsCi(pObj) )
+            {
+                // copy the PI
+                pObjNew = Aig_ObjCreateCi(pNew); 
+                pObj->pData = pObjNew;
+                // set the arrival time of the new PI
+                arrTime = Tim_ManGetCiArrival( (Tim_Man_t *)p->pManTime, Aig_ObjCioId(pObj) );
+                pObjNew->Level = (int)arrTime;
+            }
+            else if ( Aig_ObjIsCo(pObj) )
+            {
+                // perform balancing
+                pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
+                if ( pObjNew == NULL )
+                {
+                    Vec_VecFree( vStore );
+                    Aig_ManStop( pNew );
+                    return NULL;
+                }
+                pObjNew = Aig_NotCond( pObjNew, Aig_IsComplement(pDriver) );
+                // save arrival time of the output
+                arrTime = (float)Aig_Regular(pObjNew)->Level;
+                Tim_ManSetCoArrival( (Tim_Man_t *)p->pManTime, Aig_ObjCioId(pObj), arrTime );
+                // create PO
+                pObjNew = Aig_ObjCreateCo( pNew, pObjNew );
+            }
+            else
+                assert( 0 );
+        }
+        Aig_ManCleanCioIds( p );
+        pNew->pManTime = Tim_ManDup( (Tim_Man_t *)p->pManTime, 0 );
+    }
+    else
+    {
+        Aig_ManForEachCi( p, pObj, i )
+        {
+            pObjNew = Aig_ObjCreateCi(pNew); 
+            pObjNew->Level = pObj->Level;
+            pObjNew->CertifId = pObj->CertifId; //@ setting CertifId
+            pObj->pData = pObjNew;
+        }
+        if ( p->nBarBufs == 0 )
+        {
+            Aig_ManForEachCo( p, pObj, i )
+            {
+                pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
+                if ( pObjNew == NULL )
+                {
+                    Vec_VecFree( vStore );
+                    Aig_ManStop( pNew );
+                    return NULL;
+                }
+                pObjNew = Aig_NotCond( pObjNew, Aig_IsComplement(pDriver) );
+
+                int old_id = Aig_Regular(pDriver)->CertifId;
+                int new_id = Aig_Regular(pObjNew)->CertifId;
+                Mutation_t *mut = new_mutation_replace(old_id, new_id, 0);
+                Hint_t *hint = new_hint(old_id, new_id, 0);
+                Vec_PtrPush(mutations, (void *)mut);
+                Vec_PtrPush(hints, (void *)hint);
+
+                pObjNew = Aig_ObjCreateCo( pNew, pObjNew );
+            }
+        }
+        else
+        {
+            assert("BarBufs not supported" && 0);
+            Vec_Ptr_t * vLits = Vec_PtrStart( Aig_ManCoNum(p) );
+            Aig_ManForEachCo( p, pObj, i )
+            {
+                int k = i < p->nBarBufs ? Aig_ManCoNum(p) - p->nBarBufs + i : i - p->nBarBufs;
+                pObj = Aig_ManCo( p, k );
+                pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
+                if ( pObjNew == NULL )
+                {
+                    Vec_VecFree( vStore );
+                    Aig_ManStop( pNew );
+                    return NULL;
+                }
+                pObjNew = Aig_NotCond( pObjNew, Aig_IsComplement(pDriver) );
+                Vec_PtrWriteEntry( vLits, k, pObjNew );
+                if ( i < p->nBarBufs )
+                    Aig_ManCi(pNew, Aig_ManCiNum(p) - p->nBarBufs + i)->Level = Aig_Regular(pObjNew)->Level;
+            }
+            Aig_ManForEachCo( p, pObj, i )
+                Aig_ObjCreateCo( pNew, (Aig_Obj_t *)Vec_PtrEntry(vLits, i) );
+            Vec_PtrFree(vLits);
+        }
+    }
+    Vec_VecFree( vStore );
+    // remove dangling nodes
+    Aig_ManCleanup( pNew );
+    Aig_ManSetRegNum( pNew, Aig_ManRegNum(p) );
+    // check the resulting AIG
+    if ( !Aig_ManCheck(pNew) )
+        printf( "Dar_ManBalance(): The check has failed.\n" );
+
+    //@ Registering certificate associated with this balance pass.
+    Certificate_t *certif = new_certificate(mutations, hints);
+    Vec_PtrPush(certificates, (void *) certif);
+
     return pNew;
 }
 

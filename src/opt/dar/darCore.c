@@ -356,15 +356,14 @@ p->timeCuts += Abc_Clock() - clk;
                 pObjNew = Aig_NotCond( Aig_ManObj(p->pAig, pCut->pLeaves[0]), pCut->uTruth==0x5555 );
             }
             //@ Saving mutation.
-            //@ TODO : IS COMPLEMENT CORRECT FOR CONSTANT NODE ?
             int old_id = pObj->CertifId;
             int new_id = Aig_Regular(pObjNew)->CertifId;
             int complement = Aig_IsComplement(pObjNew);
             Mutation_t *mut = new_mutation_replace(old_id, new_id, complement);
             Vec_PtrPush(mutations, mut);
 
-            printf("replacing %d(%d) with %d(%d) - compl:%d\n", old_id, pObj->Id,  new_id, Aig_Regular(pObjNew)->Id, complement);
-            printf("refs:%d\n", Aig_ObjRefs(Aig_Regular(pObjNew)));
+            // printf("replacing %d(%d) with %d(%d) - compl:%d\n", old_id, pObj->Id,  new_id, Aig_Regular(pObjNew)->Id, complement);
+            // printf("refs:%d\n", Aig_ObjRefs(Aig_Regular(pObjNew)));
 
 
             // remove the old cuts
@@ -426,7 +425,7 @@ p->timeCuts += Abc_Clock() - clk;
         Vec_PtrPush(hints, (void *)hint);
 
         assert(Aig_ObjIsAnd(pObj));
-        printf("replacing %d(%d) with %d(%d)\n", pObj->CertifId, pObj->Id,  Aig_Regular(pObjNew)->CertifId, Aig_Regular(pObjNew)->Id);
+        // printf("replacing %d(%d) with %d(%d)\n", pObj->CertifId, pObj->Id,  Aig_Regular(pObjNew)->CertifId, Aig_Regular(pObjNew)->Id);
 
         // replace the node
         Aig_ObjReplace( pAig, pObj, pObjNew, p->pPars->fUpdateLevel );

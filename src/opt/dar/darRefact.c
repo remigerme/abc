@@ -310,7 +310,7 @@ printf( "\n" );
   SeeAlso     []
 
 ***********************************************************************/
-Aig_Obj_t * Dar_RefactBuildGraph( Aig_Man_t * pAig, Vec_Ptr_t * vCut, Kit_Graph_t * pGraph )
+Aig_Obj_t * Dar_RefactBuildGraph( Aig_Man_t * pAig, Vec_Ptr_t * vCut, Kit_Graph_t * pGraph, Vec_Ptr_t * mutations, CertifIdMan_t * certif_man )
 {
     Aig_Obj_t * pAnd0, * pAnd1;
     Kit_Node_t * pNode = NULL;
@@ -331,15 +331,21 @@ Aig_Obj_t * Dar_RefactBuildGraph( Aig_Man_t * pAig, Vec_Ptr_t * vCut, Kit_Graph_
         pAnd0 = Aig_NotCond( (Aig_Obj_t *)Kit_GraphNode(pGraph, pNode->eEdge0.Node)->pFunc, pNode->eEdge0.fCompl ); 
         pAnd1 = Aig_NotCond( (Aig_Obj_t *)Kit_GraphNode(pGraph, pNode->eEdge1.Node)->pFunc, pNode->eEdge1.fCompl ); 
         pNode->pFunc = Aig_And( pAig, pAnd0, pAnd1 );
-/*
-printf( "Checking " );
-Ref_ObjPrint( pAnd0 );
-printf( " and " );
-Ref_ObjPrint( pAnd1 );
-printf( "  Result " );
-Ref_ObjPrint( pNode->pFunc );
-printf( "\n" );
-*/
+        
+        //@ Emitting a certificate here if the node is new.
+        //@ We assign a new CertifId only if the node was created and do not have one.
+        //@ When reusing node (strashing), we don't want to overwrite that.
+        if (((Aig_Obj_t *)pNode->pFunc)->CertifId == 0) {
+            ((Aig_Obj_t *)pNode->pFunc)->CertifId = fresh_certif_id(certif_man);
+            Mutation_t *mut = new_mutation_create(
+                ((Aig_Obj_t *)pNode->pFunc)->CertifId,
+                Aig_Regular(pAnd0)->CertifId,
+                Aig_IsComplement(pAnd0),
+                Aig_Regular(pAnd1)->CertifId,
+                Aig_IsComplement(pAnd1)
+            );
+            Vec_PtrPush(mutations, (void *)mut);
+        }
     }
     // complement the result if necessary
     return Aig_NotCond( (Aig_Obj_t *)pNode->pFunc, Kit_GraphIsComplement(pGraph) );
@@ -519,6 +525,9 @@ int Dar_ManRefactor( Aig_Man_t * pAig, Dar_RefPar_t * pPars )
     p->nNodesInit = Aig_ManNodeNum(pAig);
     nNodesOld = Vec_PtrSize( pAig->vObjs );
 //    pProgress = Bar_ProgressStart( stdout, nNodesOld );
+    //@ useless certif id manager (needed by refactbuildgraph)
+    CertifIdMan_t *certif_man = new_certif_id_man(pAig);
+    Vec_Ptr_t *mutations = Vec_PtrAlloc(1);
     Aig_ManForEachObj( pAig, pObj, i )
     {
 //        Bar_ProgressUpdate( pProgress, i, NULL );
@@ -585,7 +594,7 @@ p->timeEval += Abc_Clock() - clk;
 
         // if we end up here, a rewriting step is accepted
         nNodeBefore = Aig_ManNodeNum( pAig );
-        pObjNew = Dar_RefactBuildGraph( pAig, p->vLeavesBest, p->pGraphBest );
+        pObjNew = Dar_RefactBuildGraph( pAig, p->vLeavesBest, p->pGraphBest, mutations, certif_man);
         //assert( (int)Aig_Regular(pObjNew)->Level <= Required );
         // replace the node
         Aig_ObjReplace( pAig, pObj, pObjNew, p->pPars->fUpdateLevel );
@@ -629,6 +638,166 @@ p->timeOther = p->timeTotal - p->timeCuts - p->timeEval;
     return 1;
 
 }
+
+
+int Dar_ManRefactorCertificates( Aig_Man_t * pAig, Dar_RefPar_t * pPars, Vec_Ptr_t * certificates)
+{
+//    Bar_Progress_t * pProgress;
+    Ref_Man_t * p;
+    Vec_Ptr_t * vCut, * vCut2;
+    Aig_Obj_t * pObj, * pObjNew;
+    int nNodesOld, nNodeBefore, nNodeAfter, nNodesSaved, nNodesSaved2;
+    int i, Required, nLevelMin;
+    abctime clkStart, clk;
+
+    // start the manager
+    p = Dar_ManRefStart( pAig, pPars );
+    // remove dangling nodes
+    Aig_ManCleanup( pAig );
+    // if updating levels is requested, start fanout and timing
+    Aig_ManFanoutStart( pAig );
+    if ( p->pPars->fUpdateLevel )
+        Aig_ManStartReverseLevels( pAig, 0 );
+
+    //@ Creating vectors for the certificate.
+    Vec_Ptr_t *mutations = Vec_PtrAlloc(500);
+    Vec_Ptr_t *hints = Vec_PtrAlloc(50);
+    CertifIdMan_t *certif_man = new_certif_id_man(pAig);
+
+    // resynthesize each node once
+    clkStart = Abc_Clock();
+    vCut = Vec_VecEntry( p->vCuts, 0 );
+    vCut2 = Vec_VecEntry( p->vCuts, 1 );
+    p->nNodesInit = Aig_ManNodeNum(pAig);
+    nNodesOld = Vec_PtrSize( pAig->vObjs );
+    Aig_ManForEachObj( pAig, pObj, i )
+    {
+        if ( !Aig_ObjIsNode(pObj) )
+            continue;
+        if ( i > nNodesOld )
+            break;
+        if ( pAig->Time2Quit && !(i & 256) && Abc_Clock() > pAig->Time2Quit )
+            break;
+        Vec_VecClear( p->vCuts );
+
+        //printf( "\nConsidering node %d.\n", pObj->Id );
+        // get the bounded MFFC size
+        clk = Abc_Clock();
+        nLevelMin = Abc_MaxInt( 0, Aig_ObjLevel(pObj) - 10 );
+        nNodesSaved = Aig_NodeMffcSupp( pAig, pObj, nLevelMin, vCut );
+        if ( nNodesSaved < p->pPars->nMffcMin ) // too small to consider
+        {
+            p->timeCuts += Abc_Clock() - clk;
+            continue; 
+        }
+        p->nNodesTried++;
+        if ( Vec_PtrSize(vCut) > p->pPars->nLeafMax ) // get one reconv-driven cut
+        {
+            Aig_ManFindCut( pObj, vCut, p->vCutNodes, p->pPars->nLeafMax, 50 );
+            nNodesSaved = Aig_NodeMffcLabelCut( p->pAig, pObj, vCut );
+        }
+        else if ( Vec_PtrSize(vCut) < p->pPars->nLeafMax - 2 && p->pPars->fExtend )
+        {
+            if ( !Dar_ObjCutLevelAchieved(vCut, nLevelMin) )
+            {
+                if ( Aig_NodeMffcExtendCut( pAig, pObj, vCut, vCut2 ) )
+                {
+                    nNodesSaved2 = Aig_NodeMffcLabelCut( p->pAig, pObj, vCut );
+                    assert( nNodesSaved2 == nNodesSaved );
+                }
+                if ( Vec_PtrSize(vCut2) > p->pPars->nLeafMax )
+                    Vec_PtrClear(vCut2);
+                if ( Vec_PtrSize(vCut2) > 0 )
+                {
+                    p->nNodesExten++;
+//                    printf( "%d(%d) ", Vec_PtrSize(vCut), Vec_PtrSize(vCut2) );
+                }
+            }
+            else
+                p->nNodesBelow++;
+        }
+p->timeCuts += Abc_Clock() - clk;
+
+        // try the cuts
+clk = Abc_Clock();
+        Required = pAig->vLevelR? Aig_ObjRequiredLevel(pAig, pObj) : ABC_INFINITY;
+        Dar_ManRefactorTryCuts( p, pObj, nNodesSaved, Required );
+p->timeEval += Abc_Clock() - clk;
+
+        // check the best gain
+        if ( !(p->GainBest > 0 || (p->GainBest == 0 && p->pPars->fUseZeros)) )
+        {
+            if ( p->pGraphBest )
+                Kit_GraphFree( p->pGraphBest );
+            continue;
+        }
+//printf( "\n" );
+
+        // if we end up here, a rewriting step is accepted
+        nNodeBefore = Aig_ManNodeNum( pAig );
+        pObjNew = Dar_RefactBuildGraph( pAig, p->vLeavesBest, p->pGraphBest, mutations, certif_man);
+
+        //@ Emitting the certificates here:
+        //@ - a `replace_node` mutation
+        //@ - a hint associated with the refactor.
+        int old_id = Aig_Regular(pObj)->CertifId;
+        int new_id = Aig_Regular(pObjNew)->CertifId;
+        int complement = Aig_IsComplement(pObjNew);
+
+        Mutation_t *mut = new_mutation_replace(
+            old_id,
+            new_id,
+            complement
+        );
+        Vec_PtrPush(mutations, (void *)mut);
+
+        Hint_t *hint = new_hint(
+            old_id,
+            new_id,
+            complement
+        );
+        Vec_PtrPush(hints, (void *)hint);
+
+        //assert( (int)Aig_Regular(pObjNew)->Level <= Required );
+        // replace the node
+        Aig_ObjReplace( pAig, pObj, pObjNew, p->pPars->fUpdateLevel );
+        // compare the gains
+        nNodeAfter = Aig_ManNodeNum( pAig );
+        assert( p->GainBest <= nNodeBefore - nNodeAfter );
+        Kit_GraphFree( p->pGraphBest );
+        p->nCutsUsed++;
+//        break;
+    }
+
+    //@ Registering certificate associated with this refactor pass.
+    Certificate_t *certif = new_certificate(mutations, hints);
+    Vec_PtrPush(certificates, (void *) certif);
+
+
+    p->timeTotal = Abc_Clock() - clkStart;
+    p->timeOther = p->timeTotal - p->timeCuts - p->timeEval;
+
+    // put the nodes into the DFS order and reassign their IDs
+    //    Aig_NtkReassignIds( p );
+    // fix the levels
+    Aig_ManFanoutStop( pAig );
+    if ( p->pPars->fUpdateLevel )
+        Aig_ManStopReverseLevels( pAig );
+
+    // remove dangling nodes (they should not be here!)
+    Aig_ManCleanup( pAig );
+
+    // stop the rewriting manager
+    Dar_ManRefStop( p );
+    //    Aig_ManCheckPhase( pAig );
+    if ( !Aig_ManCheck( pAig ) )
+    {
+        printf( "Dar_ManRefactor: The network check has failed.\n" );
+        return 0;
+    }
+    return 1;
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 ///                       END OF FILE                                ///

@@ -1563,6 +1563,16 @@ Abc_Ntk_t * Abc_NtkDRewrite( Abc_Ntk_t * pNtk, Dar_RwrPar_t * pPars )
     Aig_Man_t * pMan, * pTemp;
     Abc_Ntk_t * pNtkAig;
     abctime clk;
+
+
+    char fileName[1000];
+    // EPFL
+    //int shift = 12;
+    // BEEM
+    int shift = 14;
+    // sprintf(fileName, "../BEEMres%s.drw.certif", &pNtk->pName[shift]);
+    sprintf(fileName, "drw.certif");
+
     assert( Abc_NtkIsStrash(pNtk) );
     pMan = Abc_NtkToDar( pNtk, 0, 0 );
     if ( pMan == NULL )
@@ -1577,7 +1587,7 @@ Abc_Ntk_t * Abc_NtkDRewrite( Abc_Ntk_t * pNtk, Dar_RwrPar_t * pPars )
     }
 */
 
-    Vec_Ptr_t *certificates = Vec_PtrAlloc(6);
+    Vec_Ptr_t *certificates = Vec_PtrAlloc(1);
     Dar_ManRewriteCertificates( pMan, pPars, certificates );
 //    pMan = Dar_ManBalance( pTemp = pMan, pPars->fUpdateLevel );
 //    Aig_ManStop( pTemp );
@@ -1602,7 +1612,7 @@ clk = Abc_Clock();
     //     printf("ad=%d ", pObj_->CertifId);
     // }
 
-    FILE *fp = fopen("drw.certif", "wb");
+    FILE *fp = fopen(fileName, "wb");
     write_certificates(certificates, fp);
     fclose(fp);
 
@@ -1625,13 +1635,23 @@ Abc_Ntk_t * Abc_NtkDRefactor( Abc_Ntk_t * pNtk, Dar_RefPar_t * pPars )
     Aig_Man_t * pMan, * pTemp;
     Abc_Ntk_t * pNtkAig;
     abctime clk;
+
+    char fileName[1000];
+    // EPFL
+    //int shift = 12;
+    // BEEM
+    int shift = 14;
+    // sprintf(fileName, "../BEEMres%s.drf.certif", &pNtk->pName[shift]);
+    sprintf(fileName, "drf.certif");
+
     assert( Abc_NtkIsStrash(pNtk) );
     pMan = Abc_NtkToDar( pNtk, 0, 0 );
     if ( pMan == NULL )
         return NULL;
 //    Aig_ManPrintStats( pMan );
 
-    Dar_ManRefactor( pMan, pPars );
+    Vec_Ptr_t *certificates = Vec_PtrAlloc(1);
+    Dar_ManRefactorCertificates( pMan, pPars, certificates );
 //    pMan = Dar_ManBalance( pTemp = pMan, pPars->fUpdateLevel );
 //    Aig_ManStop( pTemp );
 
@@ -1643,6 +1663,11 @@ clk = Abc_Clock();
 //    Aig_ManPrintStats( pMan );
     pNtkAig = Abc_NtkFromDar( pNtk, pMan );
     Aig_ManStop( pMan );
+
+    FILE *fp = fopen(fileName, "wb");
+    write_certificates(certificates, fp);
+    fclose(fp);
+
     return pNtkAig;
 }
 
@@ -4117,6 +4142,15 @@ Abc_Ntk_t * Abc_NtkBalanceExor( Abc_Ntk_t * pNtk, int fUpdateLevel, int fVerbose
     extern void Dar_BalancePrintStats( Aig_Man_t * p );
     Abc_Ntk_t * pNtkAig;
     Aig_Man_t * pMan, * pTemp;//, * pTemp2;
+
+    char fileName[1000];
+    // EPFL
+    //int shift = 12;
+    // BEEM
+    int shift = 14;
+    // sprintf(fileName, "../BEEMres%s.drf.certif", &pNtk->pName[shift]);
+    sprintf(fileName, "b.certif");
+
     assert( Abc_NtkIsStrash(pNtk) );
     // derive AIG with EXORs
     pMan = Abc_NtkToDar( pNtk, 1, 0 );
@@ -4126,12 +4160,18 @@ Abc_Ntk_t * Abc_NtkBalanceExor( Abc_Ntk_t * pNtk, int fUpdateLevel, int fVerbose
     if ( fVerbose )
         Dar_BalancePrintStats( pMan );
     // perform balancing
-    pTemp = Dar_ManBalance( pMan, fUpdateLevel );
+    Vec_Ptr_t *certificates = Vec_PtrAlloc(1);
+    pTemp = Dar_ManBalanceCertificates( pMan, fUpdateLevel, certificates);
 //    Aig_ManPrintStats( pTemp );
     // create logic network
     pNtkAig = Abc_NtkFromDar( pNtk, pTemp );
     Aig_ManStop( pTemp );
     Aig_ManStop( pMan );
+
+    FILE *fp = fopen(fileName, "wb");
+    write_certificates(certificates, fp);
+    fclose(fp);
+
     return pNtkAig;
 }
 
