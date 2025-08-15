@@ -499,10 +499,10 @@ Aig_Obj_t * Dar_BalanceBuildSuperTop( Aig_Man_t * p, Vec_Ptr_t * vSuper, Aig_Typ
   SeeAlso     []
 
 ***********************************************************************/
-Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * vStore, int Level, int fUpdateLevel )
+Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * vStore, int Level, int fUpdateLevel, Vec_Ptr_t * mutations, Vec_Ptr_t * hints)
 {
-    //@ TODO HERE
-    //@ Set CertifId and emit mutations and hints.
+    //@ Here we need to set CertifId and emit mutations and hints.
+    //@ The caller is responsible for emitting certificates for pObjOld replace.
     Aig_Obj_t * pObjNew;
     Vec_Ptr_t * vSuper;
     int i;
@@ -515,12 +515,19 @@ Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * 
     // get the implication supergate
     vSuper = Dar_BalanceCone( pObjOld, vStore, Level );
     // check if supergate contains two nodes in the opposite polarity
-    if ( vSuper->nSize == 0 )
-        return (Aig_Obj_t *)(pObjOld->pData = Aig_ManConst0(pNew));
+    if ( vSuper->nSize == 0 ) {
+        pObjOld->pData = Aig_ManConst0(pNew);
+        ((Aig_Obj_t *)pObjOld->pData)->CertifId = 0;
+        //@ Not emitting certificate here because it's the caller's responsibility.
+        return (Aig_Obj_t *)pObjOld->pData;
+        //@ Previously:
+        //@ return (Aig_Obj_t *)(pObjOld->pData = Aig_ManConst0(pNew));
+    }
     // for each old node, derive the new well-balanced node
     for ( i = 0; i < Vec_PtrSize(vSuper); i++ )
     {
-        pObjNew = Dar_Balance_rec( pNew, Aig_Regular((Aig_Obj_t *)vSuper->pArray[i]), vStore, Level + 1, fUpdateLevel );
+        //@ TODO HERE WE MUST EMIT SOMETHING.
+        pObjNew = Dar_Balance_rec( pNew, Aig_Regular((Aig_Obj_t *)vSuper->pArray[i]), vStore, Level + 1, fUpdateLevel, mutations, hints );
         if ( pObjNew == NULL )
             return NULL;
         vSuper->pArray[i] = Aig_NotCond( pObjNew, Aig_IsComplement((Aig_Obj_t *)vSuper->pArray[i]) );
@@ -530,8 +537,10 @@ Aig_Obj_t * Dar_Balance_rec( Aig_Man_t * pNew, Aig_Obj_t * pObjOld, Vec_Vec_t * 
         return (Aig_Obj_t *)Vec_PtrEntry(vSuper, 0);
     // build the supergate
 #ifdef USE_LUTSIZE_BALANCE
+    assert(0 && "lutsize_balance not supported");
     pObjNew = Dar_BalanceBuildSuperTop( pNew, vSuper, Aig_ObjType(pObjOld), fUpdateLevel, 6 );
 #else
+    //@ TODO INVESTIGATE FOR CERTIFICATES HERE.
     pObjNew = Dar_BalanceBuildSuper( pNew, vSuper, Aig_ObjType(pObjOld), fUpdateLevel );
 #endif
     if ( pNew->Time2Quit && !(Aig_Regular(pObjNew)->Id & 255) && Abc_Clock() > pNew->Time2Quit )
@@ -574,6 +583,9 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
     Aig_ManCleanData( p );
     Aig_ManConst1(p)->pData = Aig_ManConst1(pNew);
     vStore = Vec_VecAlloc( 50 );
+    //@ dummy
+    Vec_Ptr_t *mutations = Vec_PtrAlloc(1);
+    Vec_Ptr_t *hints = Vec_PtrAlloc(1);
     if ( p->pManTime != NULL )
     {
         float arrTime;
@@ -596,7 +608,7 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
             {
                 // perform balancing
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
@@ -629,7 +641,7 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
             Aig_ManForEachCo( p, pObj, i )
             {
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
@@ -648,7 +660,7 @@ Aig_Man_t * Dar_ManBalance( Aig_Man_t * p, int fUpdateLevel )
                 int k = i < p->nBarBufs ? Aig_ManCoNum(p) - p->nBarBufs + i : i - p->nBarBufs;
                 pObj = Aig_ManCo( p, k );
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints);
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
@@ -705,6 +717,7 @@ Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr
 
     if ( p->pManTime != NULL )
     {
+        assert(0 && "pManTime not supported");
         float arrTime;
         Tim_ManIncrementTravId( (Tim_Man_t *)p->pManTime );
         Aig_ManSetCioIds( p );
@@ -725,7 +738,7 @@ Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr
             {
                 // perform balancing
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
@@ -759,7 +772,7 @@ Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr
             Aig_ManForEachCo( p, pObj, i )
             {
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
@@ -787,7 +800,7 @@ Aig_Man_t * Dar_ManBalanceCertificates( Aig_Man_t * p, int fUpdateLevel, Vec_Ptr
                 int k = i < p->nBarBufs ? Aig_ManCoNum(p) - p->nBarBufs + i : i - p->nBarBufs;
                 pObj = Aig_ManCo( p, k );
                 pDriver = Aig_ObjReal_rec( Aig_ObjChild0(pObj) );
-                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel );
+                pObjNew = Dar_Balance_rec( pNew, Aig_Regular(pDriver), vStore, 0, fUpdateLevel, mutations, hints );
                 if ( pObjNew == NULL )
                 {
                     Vec_VecFree( vStore );
