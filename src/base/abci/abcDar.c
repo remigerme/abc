@@ -1566,12 +1566,19 @@ Abc_Ntk_t * Abc_NtkDRewrite( Abc_Ntk_t * pNtk, Dar_RwrPar_t * pPars )
 
 
     char fileName[1000];
+    // local
     // EPFL
     //int shift = 12;
     // BEEM
-    int shift = 14;
-    // sprintf(fileName, "../BEEMres%s.drw.certif", &pNtk->pName[shift]);
-    sprintf(fileName, "drw.certif");
+    //int shift = 14;
+    
+    // slice
+    // EPFL
+    int shift = 11;
+    // BEEM
+    // TODO
+    sprintf(fileName, "../EPFLres%s.drw.certif", &pNtk->pName[shift]);
+    // sprintf(fileName, "drw.certif");
 
     assert( Abc_NtkIsStrash(pNtk) );
     pMan = Abc_NtkToDar( pNtk, 0, 0 );
