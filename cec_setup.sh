@@ -29,19 +29,19 @@ process_circuit_beem() {
 }
 
 # EPFL benchmark
-# while IFS= read -r -d '' aig_file; do
-#     circuit_name=$(basename "$aig_file" .aig)
-#     relative_path=$(dirname "${aig_file#../EPFLnomtm/}")
-
-#     process_circuit_epfl "$aig_file" "$circuit_name" "$relative_path" &
-
-# done < <(find ../EPFLnomtm -name "*.aig" -type f -print0)
-
-# BEEM benchmark
 while IFS= read -r -d '' aig_file; do
     circuit_name=$(basename "$aig_file" .aig)
-    relative_path=$(dirname "${aig_file#benchmark/beem/}")
+    relative_path=$(dirname "${aig_file#../EPFLfull/}")
 
-    process_circuit_beem "$aig_file" "$circuit_name" "$relative_path" &
+    process_circuit_epfl "$aig_file" "$circuit_name" "$relative_path" &
 
-done < <(find benchmark/beem -name "*.aig" -type f -print0)
+done < <(find ../EPFLfull -name "*.aig" -type f -print0)
+
+# BEEM benchmark
+# while IFS= read -r -d '' aig_file; do
+#     circuit_name=$(basename "$aig_file" .aig)
+#     relative_path=$(dirname "${aig_file#benchmark/beem/}")
+
+#     process_circuit_beem "$aig_file" "$circuit_name" "$relative_path" &
+
+# done < <(find benchmark/beem -name "*.aig" -type f -print0)

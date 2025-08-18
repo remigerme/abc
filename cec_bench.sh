@@ -1,5 +1,8 @@
 #!/bin/bash
 
+N_EXP=20
+MAX_PROCESS=100
+
 process_circuit_epfl() {
     local aig_file="$1"
     local circuit_name="$2"
@@ -39,8 +42,11 @@ while IFS= read -r -d '' aig_file; do
         # Extract relative path from EPFLres
         relative_path=$(dirname "${aig_file#../EPFLres/}")
 
-        for iter in $(seq 1 10);
-        do         
+        for iter in $(seq 1 $N_EXP);
+        do
+            while [ $(ps aux | grep abc | grep -v grep | wc -l) -ge MAX_PROCESS ]; do
+                sleep 0.5
+            done
             process_circuit_epfl "$aig_file" "$base_name" "$relative_path" "$aig_file_drw" "$iter" &
         done
     else
@@ -51,23 +57,23 @@ while IFS= read -r -d '' aig_file; do
     
 done < <(find ../EPFLres -name "*.aig" -not -name "*_drw.aig" -print0)
 
-while IFS= read -r -d '' aig_file; do
-    base_name=$(basename "$aig_file" .aig)
-    dir_path=$(dirname "$aig_file")
-    aig_file_drw="${dir_path}/${base_name}_drw.aig"
+# while IFS= read -r -d '' aig_file; do
+#     base_name=$(basename "$aig_file" .aig)
+#     dir_path=$(dirname "$aig_file")
+#     aig_file_drw="${dir_path}/${base_name}_drw.aig"
     
-    if [[ -f "$aig_file_drw" ]]; then
-        # Extract relative path from EPFLres
-        relative_path=$(dirname "${aig_file#../BEEMres/}")
+#     if [[ -f "$aig_file_drw" ]]; then
+#         # Extract relative path from BEEMres
+#         relative_path=$(dirname "${aig_file#../BEEMres/}")
 
-        for iter in $(seq 1 10);
-        do         
-            process_circuit_beem "$aig_file" "$base_name" "$relative_path" "$aig_file_drw" "$iter" &
-        done
-    else
-        echo "Warning: No corresponding _drw.aig file found for $aig_file"
-        echo "  Expected: $aig_file_drw"
-        echo ""
-    fi
+#         for iter in $(seq 1 10);
+#         do         
+#             process_circuit_beem "$aig_file" "$base_name" "$relative_path" "$aig_file_drw" "$iter" &
+#         done
+#     else
+#         echo "Warning: No corresponding _drw.aig file found for $aig_file"
+#         echo "  Expected: $aig_file_drw"
+#         echo ""
+#     fi
     
-done < <(find ../BEEMres -name "*.aig" -not -name "*_drw.aig" -print0)
+# done < <(find ../BEEMres -name "*.aig" -not -name "*_drw.aig" -print0)
