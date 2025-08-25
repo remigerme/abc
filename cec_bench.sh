@@ -1,7 +1,7 @@
 #!/bin/bash
 
 N_EXP=20
-MAX_PROCESS=100
+MAX_PROCESS=50
 
 process_circuit_epfl() {
     local aig_file="$1"
@@ -44,7 +44,7 @@ while IFS= read -r -d '' aig_file; do
 
         for iter in $(seq 1 $N_EXP);
         do
-            while [ $(ps aux | grep abc | grep -v grep | wc -l) -ge MAX_PROCESS ]; do
+            while [ $(ps aux | grep abc | grep -v grep | wc -l) -ge $MAX_PROCESS ]; do
                 sleep 0.5
             done
             process_circuit_epfl "$aig_file" "$base_name" "$relative_path" "$aig_file_drw" "$iter" &
